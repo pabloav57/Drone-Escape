@@ -10,7 +10,7 @@ Este es un sencillo juego de drones desarrollado en Unity. El jugador controla u
 
 - Colisiones: El juego detecta colisiones con obstáculos y edificios.
 
-- Menú de Game Over: Al chocar, se muestra un menú que permite reiniciar el juego.
+- Menú de Game Over: Al chocar, se muestra un menú que permite reiniciar el juego con el tiempo.
 
 - Sistema de pausado: El juego se detiene al mostrar el menú de Game Over.
 

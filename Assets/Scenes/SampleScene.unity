@@ -1221,8 +1221,8 @@ Transform:
   m_GameObject: {fileID: 1659287789}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1109, y: 0, z: -130}
-  m_LocalScale: {x: 1.1095, y: 1, z: 0.84191}
+  m_LocalPosition: {x: -1027.5, y: 0, z: -119.02}
+  m_LocalScale: {x: 1.0190979, y: 1, z: 0.8326658}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -1262,12 +1262,13 @@ MonoBehaviour:
   - {fileID: 70693396437987900, guid: cf23b55ba765f374aab36c1a7a3b28f4, type: 3}
   - {fileID: 134496185276144424, guid: ce1e8e032db7c26449ae1d260b060f0c, type: 3}
   - {fileID: 573161827484528085, guid: 323885c14529a9142b1f9dbaabda8e4a, type: 3}
-  spawnInterval: 1
+  baseSpawnInterval: 2
   obstacleDistance: 50
   minHeight: 2
   maxHeight: 30
   drone: {fileID: 1798818147}
-  obstacleSpeed: 5
+  baseObstacleSpeed: 5
+  difficultyIncreaseRate: 1
 --- !u!4 &1758754246
 Transform:
   m_ObjectHideFlags: 0

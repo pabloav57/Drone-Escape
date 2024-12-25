@@ -1,19 +1,25 @@
 using UnityEngine;
 using TMPro;
-using UnityEngine.UI;  // Importante para trabajar con botones
+using UnityEngine.UI;
+
 
 public class GameController : MonoBehaviour
 {
-    public TextMeshProUGUI gameOverText;  // Referencia al texto de Game Over (y Pausa)
-    public TextMeshProUGUI timerText;     // Referencia al texto del cronómetro
-    public Button restartButton;          // Referencia al botón de reiniciar
-    public Button exitButton;             // Referencia al botón de salir
-    public Button resumeButton;           // Referencia al botón de reanudar
-    public GameObject gameOverMenu;       // Referencia al panel del menú (Game Over y Pausa)
+    // Referencias al menú principal
+    public GameObject startMenu;  // Panel del menú de inicio
+    public TextMeshProUGUI startText;  // Texto para empezar el juego
 
-    private float elapsedTime = 0f;       // Tiempo transcurrido
-    private bool isGameOver = false;      // Estado del juego
-    private bool isPaused = false;        // Estado de la pausa
+    // Referencias al menú de Game Over y Pausa
+    public TextMeshProUGUI gameOverText;  
+    public TextMeshProUGUI timerText;     
+    public Button restartButton;          
+    public Button exitButton;             
+    public Button resumeButton;           
+    public GameObject gameOverMenu;
+
+    private float elapsedTime = 0f;       
+    private bool isGameOver = false;      
+    private bool isPaused = true;         // Inicialmente, el juego está en pausa
 
     void Start()
     {
@@ -31,23 +37,30 @@ public class GameController : MonoBehaviour
             resumeButton.gameObject.SetActive(false);
 
         if (gameOverMenu != null)
-            gameOverMenu.SetActive(false); 
+            gameOverMenu.SetActive(false);
 
-        timerText.text = "Tiempo: 0.00s"; // Inicializa el cronómetro
+        if (startMenu != null)
+            startMenu.SetActive(true);  // Mostrar el menú de inicio
 
-        // Configura los eventos para los botones
-        if (restartButton != null)
-            restartButton.onClick.AddListener(RestartGame);
-        
-        if (exitButton != null)
-            exitButton.onClick.AddListener(ExitGame);
+        // Inicializar cronómetro
+        timerText.text = "Tiempo: 0.00s"; 
 
-        if (resumeButton != null)
-            resumeButton.onClick.AddListener(ResumeGame);
+        // Asegurarse de que el texto de "Pulsa espacio para empezar" esté visible
+        if (startText != null)
+            startText.gameObject.SetActive(true);
+
+        // Pausar el juego inicialmente
+        Time.timeScale = 0f;  // Esto pausa el juego antes de darle al botón de iniciar
     }
 
     void Update()
     {
+        // Esperar a que el jugador presione la tecla espacio para comenzar el juego
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            StartGame();
+        }
+
         if (!isGameOver && !isPaused)
         {
             // Incrementar el tiempo transcurrido
@@ -60,53 +73,53 @@ public class GameController : MonoBehaviour
         {
             if (isGameOver)
             {
-                // Si el juego terminó, mostrar las opciones de reiniciar o salir
                 ShowGameOverMenu();
             }
             else if (!isPaused)
             {
-                // Si no está en pausa, pausar el juego
                 ShowPauseMenu();
             }
             else
             {
-                // Si está en pausa, reanudar el juego
                 ResumeGame();
             }
         }
 
-        // Detectar si se presiona la tecla Espacio para reiniciar el juego en Game Over
         if (isGameOver && Input.GetKeyDown(KeyCode.Space))
         {
             RestartGame();
         }
     }
 
+    public void StartGame()
+    {
+        // Iniciar el juego al presionar "Espacio"
+        startMenu.SetActive(false);  // Ocultar el menú de inicio
+        Time.timeScale = 1f;         // Reanudar el tiempo del juego
+        isPaused = false;            // El juego ya no está en pausa
+    }
+
     public void EndGame()
     {
         isGameOver = true; // Detener el cronómetro
-        Time.timeScale = 0f;
+        Time.timeScale = 0f;  // Pausar el juego
 
-        // Mostrar el menú de Game Over
         ShowGameOverMenu();
     }
 
     void ShowGameOverMenu()
     {
-        // Activar el panel de Game Over
         if (gameOverMenu != null)
             gameOverMenu.SetActive(true);
 
-        // Activar el texto de Game Over
         if (gameOverText != null)
         {
-            gameOverText.gameObject.SetActive(true);  // Nos aseguramos que el texto esté activado
+            gameOverText.gameObject.SetActive(true);  
             gameOverText.text = "<size=60><color=red>Game Over!</color></size>\n\n" +
                                 "Duración: " + elapsedTime.ToString("F2") + "s\n\n" +
                                 "Presiona Espacio o haz clic en el botón para reiniciar el juego!";
         }
 
-        // Activar los botones de Game Over
         if (restartButton != null)
         {
             restartButton.gameObject.SetActive(true);
@@ -120,15 +133,12 @@ public class GameController : MonoBehaviour
 
     void ShowPauseMenu()
     {
-        // Pausar el tiempo
         Time.timeScale = 0f;
         isPaused = true;
 
-        // Activar el panel de pausa (usando el menú de Game Over como pausa)
         if (gameOverMenu != null)
             gameOverMenu.SetActive(true);
 
-        // Actualizar el texto a "Pausa"
         if (gameOverText != null)
         {
             gameOverText.gameObject.SetActive(true);
@@ -137,7 +147,6 @@ public class GameController : MonoBehaviour
                                 "Presiona ESC para reanudar o el botón de abajo!";
         }
 
-        // Activar los botones de pausa
         if (resumeButton != null)
             resumeButton.gameObject.SetActive(true);
 
@@ -150,26 +159,22 @@ public class GameController : MonoBehaviour
 
     void ResumeGame()
     {
-        // Reanudar el tiempo del juego
         Time.timeScale = 1f;
         isPaused = false;
 
-        // Ocultar el menú de pausa
         if (gameOverMenu != null)
             gameOverMenu.SetActive(false);
     }
 
     void RestartGame()
     {
-        // Reiniciar el juego
         Time.timeScale = 1f;
-        elapsedTime = 0f; // Reiniciar el cronómetro
+        elapsedTime = 0f; 
         UnityEngine.SceneManagement.SceneManager.LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
     }
 
     void ExitGame()
     {
-        // Salir del juego
         Application.Quit();
     }
 }

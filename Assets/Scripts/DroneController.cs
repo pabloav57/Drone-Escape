@@ -15,7 +15,7 @@ public class DroneController : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        // Asegúrate de que no haya colisiones al inicio
+        // Nos aseguramos de que no haya colisiones al inicio
         isColliding = false;
         rb = GetComponent<Rigidbody>();  // Obtener el Rigidbody para su control
 

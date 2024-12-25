@@ -31,7 +31,7 @@ public class GameController : MonoBehaviour
             resumeButton.gameObject.SetActive(false);
 
         if (gameOverMenu != null)
-            gameOverMenu.SetActive(false); // Asegurarse de que el panel de Game Over/Pausa esté desactivado
+            gameOverMenu.SetActive(false); 
 
         timerText.text = "Tiempo: 0.00s"; // Inicializa el cronómetro
 
@@ -100,7 +100,7 @@ public class GameController : MonoBehaviour
         // Activar el texto de Game Over
         if (gameOverText != null)
         {
-            gameOverText.gameObject.SetActive(true);  // Asegúrate de que el texto esté activado
+            gameOverText.gameObject.SetActive(true);  // Nos aseguramos que el texto esté activado
             gameOverText.text = "<size=60><color=red>Game Over!</color></size>\n\n" +
                                 "Duración: " + elapsedTime.ToString("F2") + "s\n\n" +
                                 "Presiona Espacio o haz clic en el botón para reiniciar el juego!";

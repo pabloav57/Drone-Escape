@@ -618,6 +618,7 @@ PrefabInstance:
     m_RemovedComponents:
     - {fileID: 8275551764334465189, guid: c53e58c59cba20e4ab6f2080fbdafb5f, type: 3}
     - {fileID: 6867457955423845712, guid: c53e58c59cba20e4ab6f2080fbdafb5f, type: 3}
+    - {fileID: 5786825434665980003, guid: c53e58c59cba20e4ab6f2080fbdafb5f, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
@@ -955,7 +956,7 @@ Rigidbody:
     m_Bits: 0
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
-  m_UseGravity: 1
+  m_UseGravity: 0
   m_IsKinematic: 0
   m_Interpolate: 0
   m_Constraints: 0
@@ -1434,7 +1435,7 @@ Rigidbody:
     m_Bits: 0
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
-  m_UseGravity: 1
+  m_UseGravity: 0
   m_IsKinematic: 0
   m_Interpolate: 0
   m_Constraints: 0
@@ -1567,7 +1568,7 @@ Rigidbody:
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
   m_UseGravity: 0
-  m_IsKinematic: 1
+  m_IsKinematic: 0
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0

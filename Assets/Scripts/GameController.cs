@@ -1,54 +1,55 @@
 using UnityEngine;
-using TMPro; // Necesario para TextMeshPro
-using UnityEngine.SceneManagement; // Necesario para cargar la escena de nuevo
+using UnityEngine.UI; // Para botones y paneles de UI
+using UnityEngine.SceneManagement;
 
 public class GameController : MonoBehaviour
 {
-    public TextMeshProUGUI gameOverText; // Referencia al TextMeshProUGUI para mostrar el mensaje de fin de juego
+    public GameObject gameOverMenu; // Panel del menú de Game Over
 
-    private bool isGameOver = false;   // Para controlar si el juego ha terminado
+    private bool isGameOver = false;
 
-    // Start is called before the first frame update
     void Start()
     {
-        // Asegúrate de que el mensaje esté oculto al principio
-        gameOverText.gameObject.SetActive(false);
+        // Nos aseguramos de que el menú está oculto al inicio
+        gameOverMenu.SetActive(false);
     }
 
-    // Update is called once per frame
     void Update()
     {
         if (isGameOver)
         {
-            // Si el juego ha terminado, mostramos el mensaje y esperamos que el jugador presione espacio para reiniciar
-            if (Input.GetKeyDown(KeyCode.Space))
-            {
-                RestartGame(); // Reiniciar el juego
-            }
+            // El menú se muestra, no hacemos nada más
+            return;
         }
     }
 
-    // Método que se llama cuando el dron colisiona, se llama desde DroneController
+    // Método que se llama al perder
     public void EndGame()
     {
-        // Pausar el juego
-        Time.timeScale = 0f;
+    // Mostrar el menú de fin de juego
+    gameOverMenu.SetActive(true);
 
-        // Mostrar el mensaje en pantalla
-        gameOverText.gameObject.SetActive(true);
-        gameOverText.text = "Game Over! \nPress Space to Restart";  // Cambia el texto
+    // Pausar el tiempo
+    Time.timeScale = 0f;
 
-        // Establecer que el juego ha terminado
-        isGameOver = true;
-    }
+    // Establecer que el juego ha terminado
+    isGameOver = true;
+}
 
     // Método para reiniciar el juego
-    void RestartGame()
-    {
-        // Restablecer el tiempo de juego
-        Time.timeScale = 1f;
+    public void RestartGame()
+{
+    // Restablecer el tiempo antes de cargar la escena
+    Time.timeScale = 1f;
 
-        // Reiniciar el juego cargando la misma escena
-        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+    // Reiniciar el juego cargando la misma escena
+    SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+    }
+
+    // Método para salir al menú principal
+    public void QuitToMainMenu()
+    {
+        // Aquí deberías cargar tu escena de menú principal
+        SceneManager.LoadScene("MainMenu"); // Cambia "MainMenu" por el nombre de tu escena de menú
     }
 }

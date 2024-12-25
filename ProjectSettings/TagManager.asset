@@ -6,6 +6,7 @@ TagManager:
   tags:
   - Obstacle
   - Building
+  - Drone
   layers:
   - Default
   - TransparentFX

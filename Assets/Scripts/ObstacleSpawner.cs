@@ -76,7 +76,7 @@ public class ObstacleMovement : MonoBehaviour
         }
     }
 
-    void OnTriggerEnter(Collider other)
+    void OnColisionEnter(Collider other)
     {
         // Si colisiona con el dron, no lo destruyas automáticamente
         if (other.CompareTag("Drone"))

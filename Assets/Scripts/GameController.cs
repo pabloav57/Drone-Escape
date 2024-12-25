@@ -1,55 +1,74 @@
 using UnityEngine;
-using UnityEngine.UI; // Para botones y paneles de UI
-using UnityEngine.SceneManagement;
+using TMPro;
+using UnityEngine.UI;  // Importante para trabajar con botones
 
 public class GameController : MonoBehaviour
 {
-    public GameObject gameOverMenu; // Panel del menú de Game Over
+    public TextMeshProUGUI gameOverText;  // Referencia al texto de Game Over
+    public TextMeshProUGUI timerText;    // Referencia al texto del cronómetro
+    public Button restartButton;         // Referencia al botón de reiniciar
+    public GameObject gameOverMenu;      // Referencia al panel del menú de Game Over
 
-    private bool isGameOver = false;
+    private float elapsedTime = 0f;      // Tiempo transcurrido
+    private bool isGameOver = false;     // Estado del juego
 
     void Start()
     {
-        // Nos aseguramos de que el menú está oculto al inicio
-        gameOverMenu.SetActive(false);
+        // Asegurarse de que todo esté desactivado al principio
+        if (gameOverText != null)
+            gameOverText.gameObject.SetActive(false);
+        
+        if (restartButton != null)
+            restartButton.gameObject.SetActive(false);
+        
+        if (gameOverMenu != null)
+            gameOverMenu.SetActive(false); // Asegurarse de que el panel de Game Over esté desactivado
+
+        timerText.text = "Tiempo: 0.00s"; // Inicializa el cronómetro
+
+        // Configura el evento para el botón de reiniciar
+        if (restartButton != null)
+            restartButton.onClick.AddListener(RestartGame);
     }
 
     void Update()
     {
-        if (isGameOver)
+        if (!isGameOver)
         {
-            // El menú se muestra, no hacemos nada más
-            return;
+            // Incrementar el tiempo transcurrido
+            elapsedTime += Time.deltaTime;
+            timerText.text = "Tiempo: " + elapsedTime.ToString("F2") + "s"; // Actualizar texto del contador
         }
     }
 
-    // Método que se llama al perder
     public void EndGame()
     {
-    // Mostrar el menú de fin de juego
-    gameOverMenu.SetActive(true);
+        isGameOver = true; // Detener el cronómetro
+        Time.timeScale = 0f;
 
-    // Pausar el tiempo
-    Time.timeScale = 0f;
+        // Mostrar el menú de Game Over
+        if (gameOverMenu != null)
+            gameOverMenu.SetActive(true); // Activar el panel de Game Over
 
-    // Establecer que el juego ha terminado
-    isGameOver = true;
-}
+        // Mostrar mensaje de Game Over
+        if (gameOverText != null)
+        {
+            gameOverText.gameObject.SetActive(true);
+            gameOverText.text = "<size=60><color=red>Game Over!</size></color>";
+            gameOverText.text += "\n\nDuración: " + elapsedTime.ToString("F2") + "s";
+            gameOverText.text += "\n\nPresiona Espacio o haz clic en el botón para reiniciar el juego!";
+        }
 
-    // Método para reiniciar el juego
-    public void RestartGame()
-{
-    // Restablecer el tiempo antes de cargar la escena
-    Time.timeScale = 1f;
-
-    // Reiniciar el juego cargando la misma escena
-    SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+        // Mostrar el botón de reinicio
+        if (restartButton != null)
+            restartButton.gameObject.SetActive(true);
     }
 
-    // Método para salir al menú principal
-    public void QuitToMainMenu()
+    void RestartGame()
     {
-        // Aquí deberías cargar tu escena de menú principal
-        SceneManager.LoadScene("MainMenu"); // Cambia "MainMenu" por el nombre de tu escena de menú
+        // Reiniciar el juego
+        Time.timeScale = 1f;
+        elapsedTime = 0f; // Reiniciar el cronómetro
+        UnityEngine.SceneManagement.SceneManager.LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
     }
 }

@@ -557,7 +557,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7231887364440564934, guid: c53e58c59cba20e4ab6f2080fbdafb5f, type: 3}
       propertyPath: m_Name
-      value: drone Black
+      value: Drone Primary
       objectReference: {fileID: 0}
     - target: {fileID: 7231887364440564934, guid: c53e58c59cba20e4ab6f2080fbdafb5f, type: 3}
       propertyPath: m_TagString
@@ -1156,6 +1156,7 @@ MonoBehaviour:
   maxWidth: 15
   areaWidth: 50
   difficultyIncreaseInterval: 10
+  poolSize: 10
 --- !u!4 &480443655
 Transform:
   m_ObjectHideFlags: 0
@@ -1186,7 +1187,7 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
@@ -1732,6 +1733,7 @@ GameObject:
   - component: {fileID: 1758754247}
   - component: {fileID: 1758754248}
   - component: {fileID: 1758754249}
+  - component: {fileID: 1758754250}
   m_Layer: 0
   m_Name: ObstacleSpawner
   m_TagString: Obstacle
@@ -1756,13 +1758,16 @@ MonoBehaviour:
   - {fileID: 70693396437987900, guid: cf23b55ba765f374aab36c1a7a3b28f4, type: 3}
   - {fileID: 134496185276144424, guid: ce1e8e032db7c26449ae1d260b060f0c, type: 3}
   - {fileID: 573161827484528085, guid: 323885c14529a9142b1f9dbaabda8e4a, type: 3}
-  baseSpawnInterval: 2
+  baseSpawnInterval: 10
   obstacleDistance: 50
   minHeight: 2
   maxHeight: 30
   drone: {fileID: 1798818147}
-  baseObstacleSpeed: 5
-  difficultyIncreaseRate: 1
+  baseObstacleSpeed: 20
+  difficultyIncreaseRate: 10
+  poolSize: 1
+  initialObstacleCount: 3
+  maxObstacleCount: 10
 --- !u!4 &1758754246
 Transform:
   m_ObjectHideFlags: 0
@@ -1838,7 +1843,7 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
@@ -1871,6 +1876,20 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
+--- !u!114 &1758754250
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1758754244}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6835341beedc11a48b525495a0c9e250, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  speed: 20
+  drone: {fileID: 1798818147}
 --- !u!1 &1772126916
 GameObject:
   m_ObjectHideFlags: 0
@@ -1999,7 +2018,7 @@ Rigidbody:
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
   m_UseGravity: 0
-  m_IsKinematic: 0
+  m_IsKinematic: 1
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0

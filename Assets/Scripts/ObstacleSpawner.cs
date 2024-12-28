@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 public class ObstacleSpawner : MonoBehaviour
 {
@@ -10,16 +11,28 @@ public class ObstacleSpawner : MonoBehaviour
     public Transform drone; // Referencia al dron
     public float baseObstacleSpeed = 5f; // Velocidad base de los obstáculos
     public float difficultyIncreaseRate = 0.05f; // Incremento por segundo en dificultad
+    public int poolSize = 10; // Tamaño del pool de objetos
+    public int initialObstacleCount = 3; // Número inicial de obstáculos
+    public int maxObstacleCount = 10; // Número máximo de obstáculos
 
     private float timeSinceLastSpawn = 0f;
     private float currentSpawnInterval;
     private float currentObstacleSpeed;
     private float elapsedTime = 0f;
+    private int currentObstacleCount = 0; // Contador de obstáculos generados
+    private Queue<GameObject> objectPool = new Queue<GameObject>();
 
     void Start()
     {
         currentSpawnInterval = baseSpawnInterval;
         currentObstacleSpeed = baseObstacleSpeed;
+        InitializeObjectPool(); // Inicializar el pool de objetos
+
+        // Generar algunos obstáculos al principio
+        for (int i = 0; i < initialObstacleCount; i++)
+        {
+            SpawnObstacle();
+        }
     }
 
     void Update()
@@ -27,61 +40,70 @@ public class ObstacleSpawner : MonoBehaviour
         elapsedTime += Time.deltaTime;
 
         // Incrementar dificultad con el tiempo
-        currentSpawnInterval = Mathf.Max(0.5f, baseSpawnInterval - (elapsedTime * difficultyIncreaseRate));
-        currentObstacleSpeed = baseObstacleSpeed + (elapsedTime * difficultyIncreaseRate);
+        currentSpawnInterval = Mathf.Max(1f, baseSpawnInterval - (elapsedTime * difficultyIncreaseRate));
+        currentObstacleSpeed = Mathf.Min(10f, baseObstacleSpeed + (elapsedTime * difficultyIncreaseRate)); // Limitar la velocidad de incremento de la dificultad
 
         // Controlar el tiempo entre spawns
         timeSinceLastSpawn += Time.deltaTime;
-        if (timeSinceLastSpawn >= currentSpawnInterval)
+        if (timeSinceLastSpawn >= currentSpawnInterval && currentObstacleCount < maxObstacleCount)
         {
             SpawnObstacle();
             timeSinceLastSpawn = 0f;
         }
     }
 
+    void InitializeObjectPool()
+    {
+        // Crear el pool de objetos
+        for (int i = 0; i < poolSize; i++)
+        {
+            GameObject obj = Instantiate(obstaclePrefabs[0]); // Inicializar con el primer prefab
+            obj.SetActive(false); // Desactivar para no aparecer en la escena
+            objectPool.Enqueue(obj); // Añadirlo al pool
+        }
+    }
+
     void SpawnObstacle()
     {
+        GameObject newObstacle;
+
+        // Usar un objeto del pool o crear uno nuevo si es necesario
+        if (objectPool.Count > 0)
+        {
+            newObstacle = objectPool.Dequeue();
+            newObstacle.SetActive(true); // Activar el objeto
+        }
+        else
+        {
+            // Si el pool está vacío, instanciamos un nuevo objeto
+            newObstacle = Instantiate(obstaclePrefabs[Random.Range(0, obstaclePrefabs.Length)]);
+        }
+
+        // Configurar la posición de spawn
         float droneZPosition = drone.position.z;
         float obstacleZPosition = droneZPosition + obstacleDistance;
         float obstacleYPosition = Random.Range(minHeight, maxHeight);
         float obstacleXPosition = drone.position.x + Random.Range(-5f, 5f);
 
-        int randomIndex = Random.Range(0, obstaclePrefabs.Length);
-        GameObject selectedObstacle = obstaclePrefabs[randomIndex];
         Vector3 spawnPosition = new Vector3(obstacleXPosition, obstacleYPosition, obstacleZPosition);
+        newObstacle.transform.position = spawnPosition;
 
-        GameObject newObstacle = Instantiate(selectedObstacle, spawnPosition, Quaternion.identity);
-
-        // Añadir movimiento a los obstáculos
-        ObstacleMovement obstacleMovement = newObstacle.AddComponent<ObstacleMovement>();
+        // Configurar la velocidad del obstáculo
+        ObstacleMovement obstacleMovement = newObstacle.GetComponent<ObstacleMovement>();
+        if (obstacleMovement == null)
+        {
+            obstacleMovement = newObstacle.AddComponent<ObstacleMovement>();
+        }
         obstacleMovement.speed = currentObstacleSpeed;
-        obstacleMovement.drone = drone;
-    }
-}
 
-public class ObstacleMovement : MonoBehaviour
-{
-    public float speed;
-    public Transform drone;
-
-    void Update()
-    {
-        // Mover hacia el dron
-        transform.Translate(Vector3.back * speed * Time.deltaTime);
-
-        // Destruir el obstáculo si está fuera del área de juego
-        if (transform.position.z < drone.position.z - 10f)
+        // Asignar la referencia del dron al script 'Obs' para que el obstáculo se mueva en función del dron
+        ObstacleMovement obstacleScript = newObstacle.GetComponent<ObstacleMovement>();
+        if (obstacleScript != null)
         {
-            Destroy(gameObject);
+            obstacleScript.drone = drone;  // Asignar el dron al obstáculo
         }
-    }
 
-    void OnColisionEnter(Collider other)
-    {
-        // Si colisiona con el dron, no lo destruyas automáticamente
-        if (other.CompareTag("Drone"))
-        {
-            Debug.Log("Obstacle passed through the drone.");
-        }
+        // Incrementar el contador de obstáculos
+        currentObstacleCount++;
     }
 }

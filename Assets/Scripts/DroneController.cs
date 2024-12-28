@@ -2,28 +2,31 @@ using UnityEngine;
 
 public class DroneController : MonoBehaviour
 {
-    public float lateralSpeed = 5f;
-    public float verticalSpeed = 5f;
-    public float tiltAngle = 30f; // Ángulo de inclinación
+    public float lateralSpeed = 5f;   // Velocidad lateral
+    public float verticalSpeed = 5f;  // Velocidad vertical
+    public float tiltAngle = 30f;     // Ángulo de inclinación
 
-    private bool isColliding = false;  // Para controlar si el dron está colisionando
+    private bool isColliding = false; // Para saber si el dron está colisionando
     private Rigidbody rb;
 
     // Referencia al GameController
     public GameController gameController;
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
+    // Start se ejecuta antes de la primera actualización
     void Start()
     {
         // Nos aseguramos de que no haya colisiones al inicio
         isColliding = false;
-        rb = GetComponent<Rigidbody>();  // Obtener el Rigidbody para su control
+        rb = GetComponent<Rigidbody>(); // Obtener el Rigidbody para su control
 
         // Verificar que el Rigidbody no esté marcado como Kinematic
         rb.isKinematic = false;
+
+        // Cambiar el modo de detección de colisiones a "Continuous"
+        rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
     }
 
-    // Update is called once per frame
+    // Update se ejecuta una vez por frame
     void Update()
     {
         // Si el dron no está colisionando, puede moverse
@@ -44,11 +47,12 @@ public class DroneController : MonoBehaviour
         else
         {
             // Si el dron está colisionando, asegurarse de que las colisiones se mantengan activas
-            // Detener cualquier movimiento si no se presionan teclas
-            rb.linearVelocity = Vector3.zero;  // Detenemos la velocidad si el dron está colisionando
-
-            // Forzar actualización del Rigidbody sin mover el dron
-            rb.MovePosition(transform.position);
+            // Detener cualquier movimiento si no se presionan teclas, pero no forzar el Rigidbody a ser estático
+            if (Input.GetAxis("Horizontal") == 0 && Input.GetAxis("Vertical") == 0)
+            {
+                // Cuando no se presionan teclas, reducimos la velocidad a cero gradualmente
+                rb.linearVelocity = Vector3.Lerp(rb.linearVelocity, Vector3.zero, Time.deltaTime * 2);  // Reducimos velocidad gradualmente
+            }
         }
     }
 

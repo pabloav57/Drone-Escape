@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 public class BuildingSpawner : MonoBehaviour
 {
@@ -13,9 +14,18 @@ public class BuildingSpawner : MonoBehaviour
     public float maxWidth = 15f; // Anchura máxima
     public float areaWidth = 50f; // Ancho del área de generación
     public float difficultyIncreaseInterval = 10f; // Incremento de dificultad cada cierto tiempo
+    public int poolSize = 10; // Tamaño del pool de edificios
 
     private float timeSinceLastSpawn = 0f;
     private float timeSinceStart = 0f;
+    private Queue<GameObject> buildingPool = new Queue<GameObject>(); // Pool de edificios
+
+    private List<GameObject> activeBuildings = new List<GameObject>(); // Lista de edificios activos
+
+    void Start()
+    {
+        InitializeBuildingPool();
+    }
 
     void Update()
     {
@@ -42,42 +52,73 @@ public class BuildingSpawner : MonoBehaviour
         MoveBuildings();
     }
 
+    void InitializeBuildingPool()
+    {
+        // Inicializar el pool de edificios
+        for (int i = 0; i < poolSize; i++)
+        {
+            GameObject building = Instantiate(buildingPrefab);
+            building.SetActive(false); // Desactivar al inicio
+            buildingPool.Enqueue(building);
+        }
+    }
+
     void SpawnBuilding()
-{
-    float xPosition = Random.Range(-areaWidth / 2, areaWidth / 2);
-    float zPosition = drone.position.z + spawnDistance;
-    float height = Random.Range(minHeight, maxHeight);
-    float width = Random.Range(minWidth, maxWidth);
+    {
+        GameObject building;
 
-    Vector3 spawnPosition = new Vector3(xPosition, height / 2, zPosition);
+        // Obtener un edificio del pool o crear uno nuevo si el pool está vacío
+        if (buildingPool.Count > 0)
+        {
+            building = buildingPool.Dequeue();
+            building.SetActive(true);
+        }
+        else
+        {
+            building = Instantiate(buildingPrefab);
+        }
 
-    // Instanciar y configurar edificio
-    GameObject building = Instantiate(buildingPrefab, spawnPosition, Quaternion.identity);
-    building.transform.localScale = new Vector3(width, height, width); // Escalar el edificio
-    building.tag = "Building";
+        // Configurar la posición y el tamaño del edificio
+        float xPosition = Random.Range(-areaWidth / 2, areaWidth / 2);
+        float zPosition = drone.position.z + spawnDistance;
+        float height = Random.Range(minHeight, maxHeight);
+        float width = Random.Range(minWidth, maxWidth);
 
-    // Añadir o ajustar BoxCollider
-    BoxCollider collider = building.GetComponent<BoxCollider>() ?? building.AddComponent<BoxCollider>();
-    collider.size = new Vector3(1, height, 1);
-    collider.center = new Vector3(0, height / 2, 0);
+        Vector3 spawnPosition = new Vector3(xPosition, height / 2, zPosition);
+        building.transform.position = spawnPosition;
+        building.transform.localScale = new Vector3(width, height, width);
 
-    // Desactivar 'Is Trigger' para que el collider actúe como una colisión física normal
-    collider.isTrigger = false;
-}
+        // Añadir o ajustar BoxCollider
+        BoxCollider collider = building.GetComponent<BoxCollider>() ?? building.AddComponent<BoxCollider>();
+        collider.size = new Vector3(1, height, 1);
+        collider.center = new Vector3(0, height / 2, 0);
+        collider.isTrigger = false; // Desactivar 'Is Trigger' para una colisión física normal
 
+        // Añadir a la lista de edificios activos
+        activeBuildings.Add(building);
+    }
 
     void MoveBuildings()
     {
-        GameObject[] buildings = GameObject.FindGameObjectsWithTag("Building");
-
-        foreach (GameObject building in buildings)
+        // Mover edificios activos
+        for (int i = activeBuildings.Count - 1; i >= 0; i--)
         {
+            GameObject building = activeBuildings[i];
             building.transform.Translate(Vector3.back * buildingSpeed * Time.deltaTime);
 
+            // Si el edificio está fuera de la vista del dron, devolverlo al pool
             if (building.transform.position.z < drone.position.z - 10f)
             {
-                Destroy(building);
+                activeBuildings.RemoveAt(i);
+                ReturnBuildingToPool(building);
             }
         }
+    }
+
+    void ReturnBuildingToPool(GameObject building)
+    {
+        // Desactivar el edificio y devolverlo al pool
+        building.SetActive(false);
+        buildingPool.Enqueue(building);
     }
 }

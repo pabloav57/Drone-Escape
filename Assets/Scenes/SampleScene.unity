@@ -1604,7 +1604,7 @@ GameObject:
   - component: {fileID: 1365855227}
   m_Layer: 5
   m_Name: Exit
-  m_TagString: Untagged
+  m_TagString: Finish
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -2283,9 +2283,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 691c3ad46511d8b4a84915cbb84f2b95, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  lateralSpeed: 5
-  verticalSpeed: 5
-  tiltAngle: 30
+  lateralSpeed: 7
+  verticalSpeed: 7
+  tiltAngle: 10
   spaceSoundController: {fileID: 1498091349}
   movementSoundController: {fileID: 944518296}
   gameController: {fileID: 1812514863}

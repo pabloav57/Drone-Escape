@@ -24,6 +24,12 @@ public class ObstacleSpawner : MonoBehaviour
 
     void Start()
     {
+        // Cargar el valor de dificultad desde PlayerPrefs
+        int difficultyIndex = PlayerPrefs.GetInt("SelectedDifficulty", 1); // 1 es el valor predeterminado (Normal)
+
+        // Ajustar parámetros según la dificultad
+        SetDifficulty(difficultyIndex);
+
         currentSpawnInterval = baseSpawnInterval;
         currentObstacleSpeed = baseObstacleSpeed;
         InitializeObjectPool(); // Inicializar el pool de objetos
@@ -49,6 +55,29 @@ public class ObstacleSpawner : MonoBehaviour
         {
             SpawnObstacle();
             timeSinceLastSpawn = 0f;
+        }
+    }
+
+    void SetDifficulty(int difficultyIndex)
+    {
+        switch (difficultyIndex)
+        {
+            case 0: // Fácil
+                baseSpawnInterval = 3f; // Intervalo más largo
+                baseObstacleSpeed = 10f; // Velocidad más baja
+                break;
+            case 1: // Normal
+                baseSpawnInterval = 2f; // Intervalo medio
+                baseObstacleSpeed = 20f; // Velocidad media
+                break;
+            case 2: // Difícil
+                baseSpawnInterval = 1.5f; // Intervalo más corto
+                baseObstacleSpeed = 50f; // Velocidad más alta
+                break;
+            case 3: // Imposible
+                baseSpawnInterval = 1f; // Intervalo muy corto
+                baseObstacleSpeed = 100f; // Velocidad máxima
+                break;
         }
     }
 

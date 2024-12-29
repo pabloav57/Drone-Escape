@@ -2080,7 +2080,7 @@ MonoBehaviour:
   maxHeight: 30
   drone: {fileID: 1798818147}
   baseObstacleSpeed: 20
-  difficultyIncreaseRate: 0.1
+  difficultyIncreaseRate: 1
   poolSize: 10
   initialObstacleCount: 1
   maxObstacleCount: 20
@@ -2490,7 +2490,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   startMenu: {fileID: 540453033}
   startText: {fileID: 478630946}
-  difficultyDropdown: {fileID: 0}
   gameOverText: {fileID: 2057686036}
   timerText: {fileID: 162192422}
   restartButton: {fileID: 2091299420}

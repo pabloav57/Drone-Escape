@@ -18,7 +18,7 @@ public class ObstacleMovement : MonoBehaviour
         }
     }
 
-    void ResetObstaclePosition()
+    public void ResetObstaclePosition()
     {
         // Puedes hacer que el obstáculo vuelva a aparecer al frente del dron
         float newZPosition = drone.position.z + 100f;  // Ajusta la distancia según necesites

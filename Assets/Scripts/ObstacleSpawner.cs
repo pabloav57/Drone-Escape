@@ -57,7 +57,7 @@ public class ObstacleSpawner : MonoBehaviour
         // Crear el pool de objetos
         for (int i = 0; i < poolSize; i++)
         {
-            GameObject obj = Instantiate(obstaclePrefabs[0]); // Inicializar con el primer prefab
+            GameObject obj = Instantiate(obstaclePrefabs[Random.Range(0, obstaclePrefabs.Length)]); // Inicializar con un prefab aleatorio
             obj.SetActive(false); // Desactivar para no aparecer en la escena
             objectPool.Enqueue(obj); // Añadirlo al pool
         }
@@ -96,14 +96,26 @@ public class ObstacleSpawner : MonoBehaviour
         }
         obstacleMovement.speed = currentObstacleSpeed;
 
-        // Asignar la referencia del dron al script 'Obs' para que el obstáculo se mueva en función del dron
-        ObstacleMovement obstacleScript = newObstacle.GetComponent<ObstacleMovement>();
-        if (obstacleScript != null)
-        {
-            obstacleScript.drone = drone;  // Asignar el dron al obstáculo
-        }
+        // Asignar la referencia del dron al script 'ObstacleMovement' para que el obstáculo se mueva en función del dron
+        obstacleMovement.drone = drone;
 
         // Incrementar el contador de obstáculos
         currentObstacleCount++;
+    }
+
+    // Método para reciclar los obstáculos cuando salen de la vista
+    void RecycleObstacle(GameObject obstacle)
+    {
+        obstacle.SetActive(false); // Desactivar el obstáculo
+
+        // Reposicionar el obstáculo antes de reciclarlo
+        obstacle.GetComponent<ObstacleMovement>().ResetObstaclePosition();
+
+        // Asegurarse de que el dron esté correctamente asignado en el reciclaje
+        obstacle.GetComponent<ObstacleMovement>().drone = drone;
+
+        // Volver a añadir el obstáculo al pool
+        objectPool.Enqueue(obstacle);
+        currentObstacleCount--;
     }
 }

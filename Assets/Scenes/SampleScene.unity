@@ -2074,7 +2074,7 @@ MonoBehaviour:
   - {fileID: 70693396437987900, guid: cf23b55ba765f374aab36c1a7a3b28f4, type: 3}
   - {fileID: 134496185276144424, guid: ce1e8e032db7c26449ae1d260b060f0c, type: 3}
   - {fileID: 573161827484528085, guid: 323885c14529a9142b1f9dbaabda8e4a, type: 3}
-  baseSpawnInterval: 10
+  baseSpawnInterval: 20
   obstacleDistance: 50
   minHeight: 2
   maxHeight: 30
@@ -2084,6 +2084,8 @@ MonoBehaviour:
   poolSize: 10
   initialObstacleCount: 1
   maxObstacleCount: 20
+  erraticDronePrefab: {fileID: 5054379811673952670, guid: e746f881748d3a147949e70e5c570880, type: 3}
+  erraticDroneSpawnRate: 1
 --- !u!4 &1758754246
 Transform:
   m_ObjectHideFlags: 0
@@ -2280,6 +2282,52 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1782598270
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1782598272}
+  - component: {fileID: 1782598271}
+  m_Layer: 0
+  m_Name: ErratikDrone
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1782598271
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1782598270}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ab7371903858d894190c1d08ef53e4a4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  speed: 10
+  targetDrone: {fileID: 1798818147}
+--- !u!4 &1782598272
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1782598270}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 1249.4827, y: 314.52484, z: -132.2807}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3106,3 +3154,4 @@ SceneRoots:
   - {fileID: 1812514864}
   - {fileID: 1498091350}
   - {fileID: 944518297}
+  - {fileID: 1782598272}

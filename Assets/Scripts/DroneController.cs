@@ -9,6 +9,10 @@ public class DroneController : MonoBehaviour
     private bool isColliding = false; // Para saber si el dron está colisionando
     private Rigidbody rb;
 
+    // Referencias para los controladores de sonido
+    public SpaceSoundController spaceSoundController; // Controlador del sonido del espacio
+    public MovementSoundController movementSoundController; // Controlador del sonido de las teclas ASDW
+
     // Referencia al GameController
     public GameController gameController;
 
@@ -32,7 +36,7 @@ public class DroneController : MonoBehaviour
         // Si el dron no está colisionando, puede moverse
         if (!isColliding)
         {
-            // Mover lateralmente (izquierda/derecha) con inclinación
+            // Movimiento lateral (izquierda/derecha) con inclinación
             float horizontalInput = Input.GetAxis("Horizontal"); // A/D o flechas izquierda/derecha
             transform.Translate(Vector3.right * horizontalInput * lateralSpeed * Time.deltaTime);
 
@@ -40,18 +44,44 @@ public class DroneController : MonoBehaviour
             float tilt = -horizontalInput * tiltAngle;
             transform.rotation = Quaternion.Euler(0, 0, tilt);
 
-            // Mover verticalmente (arriba/abajo)
+            // Movimiento vertical (arriba/abajo)
             float verticalInput = Input.GetAxis("Vertical"); // W/S o flechas arriba/abajo
             transform.Translate(Vector3.up * verticalInput * verticalSpeed * Time.deltaTime);
+
+            // Reproducir sonidos al presionar las teclas ASDW
+            if (Input.GetKey(KeyCode.A))
+            {
+                movementSoundController.PlaySound(movementSoundController.aSound);
+            }
+            if (Input.GetKey(KeyCode.S))
+            {
+                movementSoundController.PlaySound(movementSoundController.sSound);
+            }
+            if (Input.GetKey(KeyCode.W))
+            {
+                movementSoundController.PlaySound(movementSoundController.wSound);
+            }
+            if (Input.GetKey(KeyCode.D))
+            {
+                movementSoundController.PlaySound(movementSoundController.dSound);
+            }
+
+            // Reproducir sonido de la tecla Espacio si se presiona
+            if (Input.GetKeyDown(KeyCode.Space))
+            {
+                spaceSoundController.PlaySound(spaceSoundController.spaceSound);
+            }
         }
         else
         {
-            // Si el dron está colisionando, asegurarse de que las colisiones se mantengan activas
-            // Detener cualquier movimiento si no se presionan teclas, pero no forzar el Rigidbody a ser estático
+            // Si el dron está colisionando, detener los sonidos y el movimiento
+            movementSoundController.StopMovementSounds();
+            spaceSoundController.StopSpaceSound();
+
+            // Detener movimiento gradual si no se presionan teclas
             if (Input.GetAxis("Horizontal") == 0 && Input.GetAxis("Vertical") == 0)
             {
-                // Cuando no se presionan teclas, reducimos la velocidad a cero gradualmente
-                rb.linearVelocity = Vector3.Lerp(rb.linearVelocity, Vector3.zero, Time.deltaTime * 2);  // Reducimos velocidad gradualmente
+                rb.linearVelocity = Vector3.Lerp(rb.linearVelocity, Vector3.zero, Time.deltaTime * 2);
             }
         }
     }
@@ -67,6 +97,10 @@ public class DroneController : MonoBehaviour
 
             // Notificar al GameController que termine el juego
             gameController.EndGame();
+
+            // Detener todos los sonidos
+            movementSoundController.StopMovementSounds();
+            spaceSoundController.StopSpaceSound();
 
             // Mostrar un mensaje dependiendo del tipo de objeto con el que colisionó
             if (collision.gameObject.CompareTag("Obstacle"))

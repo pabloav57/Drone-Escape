@@ -1,52 +1,70 @@
 using UnityEngine;
 
-public class InfiniteTerrain : MonoBehaviour
+public class TerrainGenerator : MonoBehaviour
 {
-    public GameObject terrainPrefab;  // Prefab del terreno
-    public int numberOfSegments = 3;  // Número de segmentos activos
-    public float segmentLength = 50f;  // Longitud de cada segmento
-    public float terrainSpeed = 5f;  // Velocidad del terreno
-    public Transform drone;  // Referencia al dron
-
-    private GameObject[] terrainSegments;  // Array de segmentos del terreno
-    private int lastSegmentIndex = 0;  // Índice del último segmento generado
+    public int width = 512;  // Ancho del terreno
+    public int height = 512; // Altura del terreno
+    public float detail = 10f;  // Detalle de la textura
+    public Transform player;  // Referencia al jugador
+    public GameObject planePrefab;  // Prefab de Plane para el terreno
+    public float planeScale = 2f;  // Escala del Plane
 
     void Start()
     {
-        // Inicializar el array de segmentos
-        terrainSegments = new GameObject[numberOfSegments];
+        // Crear el terreno
+        Terrain terrain = Terrain.CreateTerrainGameObject(new TerrainData()).GetComponent<Terrain>();
+        
+        // Configurar el tamaño del terreno
+        terrain.terrainData = GenerateTerrainData(terrain.terrainData);
 
-        // Crear segmentos iniciales
-        for (int i = 0; i < numberOfSegments; i++)
+        // Asegurarse de que el terreno tenga un Terrain Collider
+        if (terrain.gameObject.GetComponent<TerrainCollider>() == null)
         {
-            Vector3 position = new Vector3(0, 0, i * segmentLength);
-            terrainSegments[i] = Instantiate(terrainPrefab, position, Quaternion.identity);
+            TerrainCollider terrainCollider = terrain.gameObject.AddComponent<TerrainCollider>();
+            terrainCollider.terrainData = terrain.terrainData;  // Asignar la data del terreno al collider
         }
+
+        // Añadir los planes sobre el terreno
+        AddPlanesToTerrain(terrain);
     }
 
-    void Update()
+    TerrainData GenerateTerrainData(TerrainData terrainData)
     {
-        // Mover todos los segmentos hacia atrás
-        foreach (GameObject segment in terrainSegments)
-        {
-            segment.transform.Translate(Vector3.back * terrainSpeed * Time.deltaTime);
-        }
-
-        // Verificar si el segmento más atrasado está fuera de la vista del dron
-        GameObject lastSegment = terrainSegments[lastSegmentIndex];
-        if (lastSegment.transform.position.z < drone.position.z - segmentLength)
-        {
-            RecycleSegment(lastSegment);
-        }
+        terrainData.heightmapResolution = Mathf.Max(width, height) + 1;
+        terrainData.SetHeights(0, 0, GenerateHeights());
+        return terrainData;
     }
 
-    void RecycleSegment(GameObject segment)
+    float[,] GenerateHeights()
     {
-        // Mover el segmento más atrasado al frente
-        float newZPosition = terrainSegments[(lastSegmentIndex + numberOfSegments - 1) % numberOfSegments].transform.position.z + segmentLength;
-        segment.transform.position = new Vector3(0, 0, newZPosition);
+        float[,] heights = new float[width, height];
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                heights[x, y] = Mathf.PerlinNoise(x / detail, y / detail);
+            }
+        }
+        return heights;
+    }
 
-        // Actualizar el índice del último segmento
-        lastSegmentIndex = (lastSegmentIndex + 1) % numberOfSegments;
+    void AddPlanesToTerrain(Terrain terrain)
+    {
+        if (planePrefab == null)
+        {
+            Debug.LogError("El prefab del plane no está asignado.");
+            return;
+        }
+
+        for (int x = 0; x < width; x += (int)planeScale)
+        {
+            for (int y = 0; y < height; y += (int)planeScale)
+            {
+                float terrainHeight = terrain.terrainData.GetHeight(x, y);
+                Vector3 spawnPosition = new Vector3(x, terrainHeight, y);
+                GameObject planeInstance = Instantiate(planePrefab, spawnPosition, Quaternion.identity);
+                planeInstance.transform.localScale = new Vector3(planeScale, 1, planeScale);
+            }
+        }
     }
 }

@@ -14,13 +14,27 @@ public class ObstacleMovement : MonoBehaviour
     private float randomMovementFactorY;  // Factor aleatorio en Y
     private float randomMovementFactorZ;  // Factor aleatorio en Z
 
-    void Start()
+void Start()
+{
+    // Buscar el dron por tag
+    if (drone == null)
     {
-        // Asignamos un factor aleatorio para cada eje
-        randomMovementFactorX = Random.Range(-1f, 1f);
-        randomMovementFactorY = Random.Range(-1f, 1f);
-        randomMovementFactorZ = Random.Range(-1f, 1f);
+        GameObject droneObject = GameObject.FindGameObjectWithTag("Drone");
+        if (droneObject != null)
+        {
+            drone = droneObject.transform;
+        }
+        else
+        {
+            Debug.LogError("No se encontró un objeto con el tag 'Drone'. Asegúrate de asignarlo o configurarlo en la escena.");
+        }
     }
+
+    // Asignamos factores aleatorios para cada eje
+    randomMovementFactorX = Random.Range(-1f, 1f);
+    randomMovementFactorY = Random.Range(-1f, 1f);
+    randomMovementFactorZ = Random.Range(-1f, 1f);
+}
 
     void Update()
     {

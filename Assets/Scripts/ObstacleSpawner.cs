@@ -4,6 +4,7 @@ using System.Collections.Generic;
 public class ObstacleSpawner : MonoBehaviour
 {
     public GameObject[] obstaclePrefabs; // Prefabs de obstáculos
+    public GameObject erraticDronePrefab; // Prefab del dron errático
     public float baseSpawnInterval = 2f; // Intervalo base entre spawns
     public float obstacleDistance = 50f; // Distancia inicial para generar obstáculos
     public float minHeight = 1f; // Altura mínima de obstáculos
@@ -12,28 +13,22 @@ public class ObstacleSpawner : MonoBehaviour
     public float baseObstacleSpeed = 5f; // Velocidad base de los obstáculos
     public float difficultyIncreaseRate = 0.05f; // Incremento por segundo en dificultad
     public int poolSize = 10; // Tamaño del pool de objetos
+    public float areaWidth = 50f; // Ancho del área de generación
     public int initialObstacleCount = 3; // Número inicial de obstáculos
     public int maxObstacleCount = 10; // Número máximo de obstáculos
+    public int maxTotalDrones = 5; // Número máximo de drones activos
 
     private float timeSinceLastSpawn = 0f;
     private float currentSpawnInterval;
     private float currentObstacleSpeed;
     private float elapsedTime = 0f;
     private int currentObstacleCount = 0; // Contador de obstáculos generados
+    private int activeDrones = 0; // Contador de drones activos
+
     private Queue<GameObject> objectPool = new Queue<GameObject>();
-
-    public GameObject erraticDronePrefab;  // Prefab del drone errático
-    public float erraticDroneSpawnRate = 10f;  // Probabilidad de que aparezca un drone errático
-
-    public int maxTotalDrones = 10; // Límite total de drones en pantalla (erráticos + no erráticos)
-    private int activeDrones = 0;  // Contador total de drones activos en pantalla
-
 
     void Start()
     {
-        int difficultyIndex = PlayerPrefs.GetInt("SelectedDifficulty", 1); // 1 es el valor predeterminado (Normal)
-        SetDifficulty(difficultyIndex);
-
         currentSpawnInterval = baseSpawnInterval;
         currentObstacleSpeed = baseObstacleSpeed;
         InitializeObjectPool(); // Inicializar el pool de objetos
@@ -60,6 +55,9 @@ public class ObstacleSpawner : MonoBehaviour
             SpawnObstacle();
             timeSinceLastSpawn = 0f;
         }
+
+        // Eliminar drones inactivos
+        RemoveInactiveDrones();
     }
 
     void SetDifficulty(int difficultyIndex)
@@ -90,8 +88,22 @@ public class ObstacleSpawner : MonoBehaviour
         for (int i = 0; i < poolSize; i++)
         {
             GameObject obj = Instantiate(obstaclePrefabs[Random.Range(0, obstaclePrefabs.Length)]);
-            obj.SetActive(false); 
+            obj.SetActive(false);
             objectPool.Enqueue(obj);
+        }
+    }
+
+    void RemoveInactiveDrones()
+    {
+        // Recorremos todos los drones activos y los eliminamos si están fuera de la pantalla
+        GameObject[] drones = GameObject.FindGameObjectsWithTag("Drone"); // Opción: asumir que todos los drones tienen la etiqueta "Drone"
+        foreach (GameObject drone in drones)
+        {
+            if (drone.transform.position.z < drone.transform.position.z - 10f) // Ajustar el valor si es necesario
+            {
+                Destroy(drone); // Destruir el dron o regresarlo al pool si lo prefieres
+                activeDrones--; // Disminuir el contador de drones activos
+            }
         }
     }
 
@@ -110,18 +122,20 @@ public class ObstacleSpawner : MonoBehaviour
             newObstacle = Instantiate(obstaclePrefabs[Random.Range(0, obstaclePrefabs.Length)]);
         }
 
-        // **Probabilidad de aparición del drone errático**:
-        if (Random.Range(0f, 100f) <= erraticDroneSpawnRate)
-        {
-            // Instanciar el drone errático
-            SpawnErraticDrone();
-        }
-
-        // Ajustamos la posición del obstáculo en función de la posición del drone y su trayectoria
-        float obstacleZPosition = drone.position.z + obstacleDistance;
+        // Ajustamos la posición del obstáculo en función de la orientación del dron
+        Vector3 forwardDirection = drone.forward; // Dirección hacia donde está mirando el dron
+        Vector3 rightDirection = drone.right; // Dirección lateral derecha
+        float obstacleZPosition = drone.position.z + obstacleDistance; // Posición Z siempre frente al dron
         float obstacleYPosition = Random.Range(minHeight, maxHeight);
-        float obstacleXPosition = drone.position.x + Random.Range(-5f, 5f); // Variación lateral
 
+        // Añadimos una variación aleatoria en X y Z para evitar líneas rectas
+        float obstacleXPosition = drone.position.x + Random.Range(-areaWidth / 2f, areaWidth / 2f); // Variación lateral
+        obstacleXPosition = Mathf.Clamp(obstacleXPosition, -areaWidth / 2f, areaWidth / 2f); // Limitar en el área
+
+        float obstacleZVariation = Random.Range(10f, 20f);  // Variar un poco en Z para dispersarlos
+        obstacleZPosition += obstacleZVariation;
+
+        // Aplicamos la posición
         newObstacle.transform.position = new Vector3(obstacleXPosition, obstacleYPosition, obstacleZPosition);
 
         // Asignamos el movimiento
@@ -132,20 +146,18 @@ public class ObstacleSpawner : MonoBehaviour
         }
         obstacleMovement.speed = currentObstacleSpeed;
 
-        // Asignamos la referencia al drone
-        obstacleMovement.drone = drone;
-
         // Incrementar el contador de obstáculos
         currentObstacleCount++;
     }
 
     void SpawnErraticDrone()
     {
-        // Generación dinámica del drone errático
+        if (activeDrones >= maxTotalDrones) return; // Evitar crear más drones si se ha alcanzado el máximo
+
         GameObject erraticDrone = Instantiate(erraticDronePrefab);
-        
-        float erraticDroneZPosition = drone.position.z + obstacleDistance;
-        float erraticDroneXPosition = drone.position.x + Random.Range(-5f, 5f); // Variación lateral
+
+        float erraticDroneZPosition = drone.position.z + obstacleDistance + Random.Range(10f, 20f); // Generar más adelante
+        float erraticDroneXPosition = drone.position.x + Random.Range(-3f, 3f); // Variación lateral menor
         float erraticDroneYPosition = Random.Range(minHeight, maxHeight);
 
         erraticDrone.transform.position = new Vector3(erraticDroneXPosition, erraticDroneYPosition, erraticDroneZPosition);
@@ -153,8 +165,10 @@ public class ObstacleSpawner : MonoBehaviour
         ErraticDroneMovement erraticMovement = erraticDrone.GetComponent<ErraticDroneMovement>();
         if (erraticMovement != null)
         {
-            erraticMovement.targetDrone = drone;  // Asignamos el dron principal
-            erraticMovement.SetUpMovement(); // Inicializa el movimiento
+            erraticMovement.targetDrone = drone; // Asignar el dron principal como referencia
+            erraticMovement.SetUpMovement(); // Configurar el movimiento
         }
+
+        activeDrones++; // Incrementar el contador de drones activos
     }
 }

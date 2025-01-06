@@ -17,6 +17,6 @@ public class MainMenu : MonoBehaviour
         startMenu.SetActive(false);
 
         // Cargar la escena del juego
-        SceneManager.LoadScene("SampleScene");
+        SceneManager.LoadScene("GameScene");
     }
 }

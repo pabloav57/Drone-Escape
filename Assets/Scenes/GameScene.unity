@@ -1679,7 +1679,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   width: 1
   height: 1
-  heightMultiplier: 2
   detail: 10
   player: {fileID: 1798818147}
   planePrefab: {fileID: 7009662008574856609, guid: 15321c69b2f2c6548b68289f23a3914a, type: 3}

@@ -29,6 +29,9 @@ public class ObstacleSpawner : MonoBehaviour
 
     void Start()
     {
+        int savedDifficultyIndex = PlayerPrefs.GetInt("SelectedDifficulty", 1); // 1 como valor por defecto, si no hay valor guardado
+        SetDifficulty(savedDifficultyIndex); // Aplicar dificultad guardada
+
         currentSpawnInterval = baseSpawnInterval;
         currentObstacleSpeed = baseObstacleSpeed;
         InitializeObjectPool(); // Inicializar el pool de objetos

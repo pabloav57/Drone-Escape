@@ -31,65 +31,65 @@ public class DroneController : MonoBehaviour
     }
 
     // Update se ejecuta una vez por frame
-   void Update()
-{
-    // Si el dron no está colisionando, puede moverse
-    if (!isColliding)
+    void Update()
     {
-        // Movimiento lateral (izquierda/derecha) con inclinación
-        float horizontalInput = Input.GetAxis("Horizontal"); // A/D o flechas izquierda/derecha
-        transform.Translate(Vector3.right * horizontalInput * lateralSpeed * Time.deltaTime);
+        // Si el dron no está colisionando, puede moverse
+        if (!isColliding)
+        {
+            // Movimiento lateral (izquierda/derecha) con inclinación
+            float horizontalInput = Input.GetAxis("Horizontal"); // A/D o flechas izquierda/derecha
+            transform.Translate(Vector3.right * horizontalInput * lateralSpeed * Time.deltaTime);
 
-        // Inclinarse al moverse lateralmente
-        float tilt = -horizontalInput * tiltAngle;
-        transform.rotation = Quaternion.Euler(0, 0, tilt);
+            // Inclinarse al moverse lateralmente
+            float tilt = -horizontalInput * tiltAngle;
+            transform.rotation = Quaternion.Euler(0, 0, tilt);
 
-        // Movimiento vertical (arriba/abajo)
-        float verticalInput = Input.GetAxis("Vertical"); // W/S o flechas arriba/abajo
-        
-        // Solo mover en vertical si hay entrada, de lo contrario el dron mantiene su altura.
-        if (verticalInput != 0)
-        {
-            transform.Translate(Vector3.up * verticalInput * verticalSpeed * Time.deltaTime);
-        }
+            // Movimiento vertical (arriba/abajo)
+            float verticalInput = Input.GetAxis("Vertical"); // W/S o flechas arriba/abajo
+            
+            // Solo mover en vertical si hay entrada, de lo contrario el dron mantiene su altura.
+            if (verticalInput != 0)
+            {
+                transform.Translate(Vector3.up * verticalInput * verticalSpeed * Time.deltaTime);
+            }
 
-        // Reproducir sonidos al presionar las teclas ASDW
-        if (Input.GetKey(KeyCode.A))
-        {
-            movementSoundController.PlaySound(movementSoundController.aSound);
-        }
-        if (Input.GetKey(KeyCode.S))
-        {
-            movementSoundController.PlaySound(movementSoundController.sSound);
-        }
-        if (Input.GetKey(KeyCode.W))
-        {
-            movementSoundController.PlaySound(movementSoundController.wSound);
-        }
-        if (Input.GetKey(KeyCode.D))
-        {
-            movementSoundController.PlaySound(movementSoundController.dSound);
-        }
+            // Reproducir sonidos al presionar las teclas ASDW
+            if (Input.GetKey(KeyCode.A))
+            {
+                movementSoundController.PlaySound(movementSoundController.aSound);
+            }
+            if (Input.GetKey(KeyCode.S))
+            {
+                movementSoundController.PlaySound(movementSoundController.sSound);
+            }
+            if (Input.GetKey(KeyCode.W))
+            {
+                movementSoundController.PlaySound(movementSoundController.wSound);
+            }
+            if (Input.GetKey(KeyCode.D))
+            {
+                movementSoundController.PlaySound(movementSoundController.dSound);
+            }
 
-        // Reproducir sonido de la tecla Espacio si se presiona
-        if (Input.GetKeyDown(KeyCode.Space))
+            // Reproducir sonido de la tecla Espacio si se presiona
+            if (Input.GetKeyDown(KeyCode.Space))
+            {
+                spaceSoundController.PlaySound(spaceSoundController.spaceSound);
+            }
+        }
+        else
         {
-            spaceSoundController.PlaySound(spaceSoundController.spaceSound);
+            // Si el dron está colisionando, detener los sonidos y el movimiento
+            movementSoundController.StopMovementSounds();
+            spaceSoundController.StopSpaceSound();
+
+            // Detener movimiento gradual si no se presionan teclas
+            if (Input.GetAxis("Horizontal") == 0 && Input.GetAxis("Vertical") == 0)
+            {
+                rb.linearVelocity = Vector3.Lerp(rb.linearVelocity, Vector3.zero, Time.deltaTime * 2);
+            }
         }
     }
-    else
-    {
-        // Si el dron está colisionando, detener los sonidos y el movimiento
-        movementSoundController.StopMovementSounds();
-        spaceSoundController.StopSpaceSound();
-
-        // Detener movimiento gradual si no se presionan teclas
-        if (Input.GetAxis("Horizontal") == 0 && Input.GetAxis("Vertical") == 0)
-        {
-            rb.linearVelocity = Vector3.Lerp(rb.linearVelocity, Vector3.zero, Time.deltaTime * 2);
-        }
-    }
-}
 
     // Este método se llama cuando el dron colisiona con otro objeto
     void OnCollisionEnter(Collision collision)

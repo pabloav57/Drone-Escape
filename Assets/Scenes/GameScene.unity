@@ -557,15 +557,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6176285927126383507, guid: c53e58c59cba20e4ab6f2080fbdafb5f, type: 3}
       propertyPath: m_Size.x
-      value: 4.5605755
+      value: 3.6415203
       objectReference: {fileID: 0}
     - target: {fileID: 6176285927126383507, guid: c53e58c59cba20e4ab6f2080fbdafb5f, type: 3}
       propertyPath: m_Size.y
-      value: 0.78451425
+      value: 0.394126
       objectReference: {fileID: 0}
     - target: {fileID: 6176285927126383507, guid: c53e58c59cba20e4ab6f2080fbdafb5f, type: 3}
       propertyPath: m_Size.z
-      value: 3.156245
+      value: 2.6630623
       objectReference: {fileID: 0}
     - target: {fileID: 6176285927126383507, guid: c53e58c59cba20e4ab6f2080fbdafb5f, type: 3}
       propertyPath: m_Enabled
@@ -573,15 +573,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6176285927126383507, guid: c53e58c59cba20e4ab6f2080fbdafb5f, type: 3}
       propertyPath: m_Center.x
-      value: -0.09950304
+      value: 0.014571309
       objectReference: {fileID: 0}
     - target: {fileID: 6176285927126383507, guid: c53e58c59cba20e4ab6f2080fbdafb5f, type: 3}
       propertyPath: m_Center.y
-      value: -0.1474224
+      value: 0.047771722
       objectReference: {fileID: 0}
     - target: {fileID: 6176285927126383507, guid: c53e58c59cba20e4ab6f2080fbdafb5f, type: 3}
       propertyPath: m_Center.z
-      value: 0.5355759
+      value: 0.7580812
       objectReference: {fileID: 0}
     - target: {fileID: 6176285927126383507, guid: c53e58c59cba20e4ab6f2080fbdafb5f, type: 3}
       propertyPath: m_IsTrigger
@@ -617,11 +617,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8004870786121596540, guid: c53e58c59cba20e4ab6f2080fbdafb5f, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 5
+      value: 4.877
       objectReference: {fileID: 0}
     - target: {fileID: 8004870786121596540, guid: c53e58c59cba20e4ab6f2080fbdafb5f, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -0.0000001455
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 8004870786121596540, guid: c53e58c59cba20e4ab6f2080fbdafb5f, type: 3}
       propertyPath: m_LocalRotation.w
@@ -664,6 +664,7 @@ PrefabInstance:
     - {fileID: 6867457955423845712, guid: c53e58c59cba20e4ab6f2080fbdafb5f, type: 3}
     - {fileID: 5786825434665980003, guid: c53e58c59cba20e4ab6f2080fbdafb5f, type: 3}
     - {fileID: 3406048513784723346, guid: c53e58c59cba20e4ab6f2080fbdafb5f, type: 3}
+    - {fileID: 6176285927126383507, guid: c53e58c59cba20e4ab6f2080fbdafb5f, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
@@ -676,6 +677,12 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 7231887364440564934, guid: c53e58c59cba20e4ab6f2080fbdafb5f, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1798818160}
+    - targetCorrespondingSourceObject: {fileID: 7231887364440564934, guid: c53e58c59cba20e4ab6f2080fbdafb5f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1798818164}
+    - targetCorrespondingSourceObject: {fileID: 2449457547141386493, guid: c53e58c59cba20e4ab6f2080fbdafb5f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 645203545}
   m_SourcePrefab: {fileID: 100100000, guid: c53e58c59cba20e4ab6f2080fbdafb5f, type: 3}
 --- !u!1 &410087039
 GameObject:
@@ -1182,7 +1189,6 @@ GameObject:
   - component: {fileID: 480443655}
   - component: {fileID: 480443654}
   - component: {fileID: 480443656}
-  - component: {fileID: 480443657}
   m_Layer: 0
   m_Name: BuildingSpawner
   m_TagString: Obstacle
@@ -1251,33 +1257,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!54 &480443657
-Rigidbody:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 480443653}
-  serializedVersion: 4
-  m_Mass: 1
-  m_Drag: 0
-  m_AngularDrag: 0.05
-  m_CenterOfMass: {x: 0, y: 0, z: 0}
-  m_InertiaTensor: {x: 1, y: 1, z: 1}
-  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ImplicitCom: 1
-  m_ImplicitTensor: 1
-  m_UseGravity: 0
-  m_IsKinematic: 0
-  m_Interpolate: 0
-  m_Constraints: 0
-  m_CollisionDetection: 2
 --- !u!1 &540453033
 GameObject:
   m_ObjectHideFlags: 0
@@ -1314,6 +1293,32 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!1 &645203541 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 2449457547141386493, guid: c53e58c59cba20e4ab6f2080fbdafb5f, type: 3}
+  m_PrefabInstance: {fileID: 333461048}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &645203545
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 645203541}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 3.7503414, y: 3.376721, z: 0.6101336}
+  m_Center: {x: 0, y: -9.440866e-16, z: -0.13286836}
 --- !u!1 &832575517
 GameObject:
   m_ObjectHideFlags: 0
@@ -2126,7 +2131,6 @@ GameObject:
   - component: {fileID: 1758754245}
   - component: {fileID: 1758754247}
   - component: {fileID: 1758754248}
-  - component: {fileID: 1758754249}
   - component: {fileID: 1758754250}
   m_Layer: 0
   m_Name: ObstacleSpawner
@@ -2156,12 +2160,12 @@ MonoBehaviour:
   baseSpawnInterval: 10
   obstacleDistance: 50
   minHeight: 2
-  maxHeight: 30
+  maxHeight: 200
   drone: {fileID: 1798818147}
   baseObstacleSpeed: 20
   difficultyIncreaseRate: 1
   poolSize: 10
-  areaWidth: 100
+  areaWidth: 200
   initialObstacleCount: 1
   maxObstacleCount: 20
   maxTotalDrones: 10
@@ -2246,33 +2250,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!54 &1758754249
-Rigidbody:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1758754244}
-  serializedVersion: 4
-  m_Mass: 1
-  m_Drag: 0
-  m_AngularDrag: 0.05
-  m_CenterOfMass: {x: 0, y: 0, z: 0}
-  m_InertiaTensor: {x: 1, y: 1, z: 1}
-  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ImplicitCom: 1
-  m_ImplicitTensor: 1
-  m_UseGravity: 0
-  m_IsKinematic: 0
-  m_Interpolate: 0
-  m_Constraints: 0
-  m_CollisionDetection: 1
 --- !u!114 &1758754250
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2400,6 +2377,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   speed: 10
   targetDrone: {fileID: 1798818147}
+  verticalAmplitude: 3
+  verticalSpeed: 1
 --- !u!4 &1782598272
 Transform:
   m_ObjectHideFlags: 0
@@ -2437,8 +2416,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 691c3ad46511d8b4a84915cbb84f2b95, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  lateralSpeed: 7
-  verticalSpeed: 7
+  lateralSpeed: 8
+  verticalSpeed: 8
   tiltAngle: 10
   spaceSoundController: {fileID: 1498091349}
   movementSoundController: {fileID: 944518296}
@@ -2491,7 +2470,7 @@ AudioSource:
   SpatializePostEffects: 0
   Priority: 128
   DopplerLevel: 1
-  MinDistance: 1.929491
+  MinDistance: 0.72613287
   MaxDistance: 70.0023
   Pan2D: 0
   rolloffMode: 0
@@ -2567,6 +2546,27 @@ AudioSource:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+--- !u!65 &1798818164
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1798818143}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.98646116, y: 0.48904306, z: 2.2380538}
+  m_Center: {x: 0.0070108324, y: 0.00031320006, z: 0.07648116}
 --- !u!1 &1812514862
 GameObject:
   m_ObjectHideFlags: 0

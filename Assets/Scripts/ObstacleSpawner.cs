@@ -135,7 +135,7 @@ public class ObstacleSpawner : MonoBehaviour
         float obstacleXPosition = drone.position.x + Random.Range(-areaWidth / 2f, areaWidth / 2f); // Variación lateral
         obstacleXPosition = Mathf.Clamp(obstacleXPosition, -areaWidth / 2f, areaWidth / 2f); // Limitar en el área
 
-        float obstacleZVariation = Random.Range(10f, 20f);  // Variar un poco en Z para dispersarlos
+        float obstacleZVariation = Random.Range(10f, 30f);  // Variar más en Z para dispersarlos más
         obstacleZPosition += obstacleZVariation;
 
         // Aplicamos la posición
@@ -153,25 +153,37 @@ public class ObstacleSpawner : MonoBehaviour
         currentObstacleCount++;
     }
 
-    void SpawnErraticDrone()
+void SpawnErraticDrone()
+{
+    if (activeDrones >= maxTotalDrones) return; // Evitar crear más drones si se ha alcanzado el máximo
+
+    GameObject erraticDrone = Instantiate(erraticDronePrefab);
+
+    float erraticDroneZPosition = drone.position.z + obstacleDistance + Random.Range(10f, 20f); // Generar más adelante
+    float erraticDroneXPosition = drone.position.x + Random.Range(-3f, 3f); // Variación lateral menor
+    float erraticDroneYPosition = Random.Range(minHeight, maxHeight); // Variación en la altura
+
+    erraticDrone.transform.position = new Vector3(erraticDroneXPosition, erraticDroneYPosition, erraticDroneZPosition);
+
+    // Movimiento horizontal
+    ErraticDroneMovement erraticMovement = erraticDrone.GetComponent<ErraticDroneMovement>();
+    if (erraticMovement != null)
     {
-        if (activeDrones >= maxTotalDrones) return; // Evitar crear más drones si se ha alcanzado el máximo
-
-        GameObject erraticDrone = Instantiate(erraticDronePrefab);
-
-        float erraticDroneZPosition = drone.position.z + obstacleDistance + Random.Range(10f, 20f); // Generar más adelante
-        float erraticDroneXPosition = drone.position.x + Random.Range(-3f, 3f); // Variación lateral menor
-        float erraticDroneYPosition = Random.Range(minHeight, maxHeight);
-
-        erraticDrone.transform.position = new Vector3(erraticDroneXPosition, erraticDroneYPosition, erraticDroneZPosition);
-
-        ErraticDroneMovement erraticMovement = erraticDrone.GetComponent<ErraticDroneMovement>();
-        if (erraticMovement != null)
-        {
-            erraticMovement.targetDrone = drone; // Asignar el dron principal como referencia
-            erraticMovement.SetUpMovement(); // Configurar el movimiento
-        }
-
-        activeDrones++; // Incrementar el contador de drones activos
+        erraticMovement.targetDrone = drone; // Asignar el dron principal como referencia
+        erraticMovement.SetUpMovement(); // Configurar el movimiento
     }
+
+    // Movimiento vertical
+    ErraticDroneMovement verticalMovement = erraticDrone.GetComponent<ErraticDroneMovement>();
+    if (verticalMovement == null)
+    {
+        verticalMovement = erraticDrone.AddComponent<ErraticDroneMovement>();
+    }
+    verticalMovement.verticalAmplitude = 3f; // Amplitud del movimiento vertical
+    verticalMovement.speed = 1f; // Velocidad del movimiento vertical
+
+    activeDrones++; // Incrementar el contador de drones activos
+}
+
+
 }

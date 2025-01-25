@@ -1,6 +1,7 @@
 using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
+using System.Collections;
 
 public class GameController : MonoBehaviour
 {
@@ -41,27 +42,20 @@ public class GameController : MonoBehaviour
             gameOverMenu.SetActive(false);
 
         if (startMenu != null)
-            startMenu.SetActive(true);  // Mostrar el menú de inicio
+            startMenu.SetActive(false);  // El menú de inicio ya no está visible al cargar la escena
 
         // Inicializar cronómetro
         timerText.text = "Tiempo: 0.00s";
 
-        // Asegurarse de que el texto de "Pulsa espacio para empezar" esté visible
-        if (startText != null)
-            startText.gameObject.SetActive(true);
-
         // Pausar el juego inicialmente
         Time.timeScale = 0f;  // Esto pausa el juego antes de darle al botón de iniciar
+
+        // Comenzar la cuenta atrás automáticamente
+        StartCoroutine(CountdownToStart());
     }
 
     void Update()
     {
-        // Esperar a que el jugador presione la tecla espacio para comenzar el juego
-        if (Input.GetKeyDown(KeyCode.Space))
-        {
-            StartGame();
-        }
-
         if (!isGameOver && !isPaused)
         {
             // Incrementar el tiempo transcurrido
@@ -95,11 +89,6 @@ public class GameController : MonoBehaviour
                 ResumeGame();
             }
         }
-
-        if (isGameOver && Input.GetKeyDown(KeyCode.Space))
-        {
-            RestartGame();
-        }
     }
 
     void SpawnObject()
@@ -108,13 +97,20 @@ public class GameController : MonoBehaviour
         Debug.Log("Objeto generado!");
     }
 
-    public void StartGame()
+    IEnumerator CountdownToStart()
     {
-        // Iniciar el juego al presionar "Espacio"
-        startMenu.SetActive(false);  // Ocultar el menú de inicio
-        Time.timeScale = 1f;         // Reanudar el tiempo del juego
-        isPaused = false;            // El juego ya no está en pausa
+        // Inicia la cuenta regresiva para comenzar el juego
+        for (int i = 3; i > 0; i--)
+        {
+            startText.text = i.ToString();
+            startText.gameObject.SetActive(true);
+            yield return new WaitForSecondsRealtime(1f); // No se ve afectado por Time.timeScale
+        }
 
+        // Comenzar el juego
+        startText.gameObject.SetActive(false);  // Ocultar la cuenta atrás
+        isPaused = false;            // El juego ya no está en pausa
+        Time.timeScale = 1f;         // Reanudar el tiempo del juego
     }
 
     void SetDifficulty(int difficultyIndex)
@@ -135,6 +131,7 @@ public class GameController : MonoBehaviour
                 break;
         }
     }
+
 
     public void EndGame()
     {

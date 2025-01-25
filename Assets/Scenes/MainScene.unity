@@ -150,7 +150,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   difficultyDropdown: {fileID: 1870691442}
   startMenu: {fileID: 540453033}
-  controlStatusText: {fileID: 0}
+  controlStatusText: {fileID: 1901220534}
+  startButton: {fileID: 1814788124}
 --- !u!4 &11024073
 Transform:
   m_ObjectHideFlags: 0
@@ -776,6 +777,7 @@ MonoBehaviour:
   difficultyDropdown: {fileID: 1870691442}
   startMenu: {fileID: 355212062}
   controlStatusText: {fileID: 1901220534}
+  startButton: {fileID: 0}
 --- !u!114 &355212067
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2558,7 +2560,7 @@ GameObject:
   - component: {fileID: 1814788125}
   - component: {fileID: 1814788124}
   m_Layer: 5
-  m_Name: ButtonSelect
+  m_Name: Start
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

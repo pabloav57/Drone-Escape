@@ -1,114 +1,117 @@
+using System.Collections;
 using UnityEngine;
 
+[RequireComponent(typeof(Rigidbody))]
 public class DroneController : MonoBehaviour
 {
-    public float lateralSpeed = 5f;   // Velocidad lateral
-    public float verticalSpeed = 5f;  // Velocidad vertical
-    public float tiltAngle = 30f;     // Ángulo de inclinación
+    private const string ControlModeKey = "UseGyroscope";
+    private const string SkinKey = "SelectedSkin";
 
-    private bool isColliding = false; // Para saber si el dron está colisionando
+    public float lateralSpeed = 5f;
+    public float verticalSpeed = 5f;
+    public float forwardSpeed = 8f;
+    public float tiltAngle = 30f;
+    public float tiltSmoothness = 8f;
+    public float movementSmoothness = 10f;
+    public float horizontalLimit = 20f;
+    public float minHeight = 1.5f;
+    public float maxHeight = 18f;
+    public Color crashTint = new Color(1f, 0.3f, 0.3f, 1f);
+    public float crashFlashDuration = 0.35f;
+
+    private bool isColliding;
     private Rigidbody rb;
+    private bool useGyroscope;
+    private Vector3 smoothedVelocity;
+    private Renderer[] droneRenderers;
+    private CameraFollow cameraFollow;
+    private Coroutine crashFlashRoutine;
+    private DroneSkinController skinController;
 
-    // Control por giroscopio
-    private bool useGyroscope = false;
-
-    // Referencias para los controladores de sonido
-    public SpaceSoundController spaceSoundController; // Controlador del sonido del espacio
-    public MovementSoundController movementSoundController; // Controlador del sonido de las teclas ASDW
-
-    // Referencia al GameController
+    public SpaceSoundController spaceSoundController;
+    public MovementSoundController movementSoundController;
     public GameController gameController;
 
-    // Start se ejecuta antes de la primera actualización
     void Start()
     {
-        isColliding = false;
         rb = GetComponent<Rigidbody>();
         rb.isKinematic = false;
+        rb.useGravity = false;
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
         rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+        rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationY;
 
-        // Verificar si el dispositivo soporta giroscopio
+        droneRenderers = GetComponentsInChildren<Renderer>(true);
+        cameraFollow = FindAnyObjectByType<CameraFollow>();
+        skinController = GetComponent<DroneSkinController>();
+        useGyroscope = PlayerPrefs.GetInt(ControlModeKey, 0) == 1;
+
+        if (skinController != null)
+        {
+            skinController.ApplySkin(PlayerPrefs.GetInt(SkinKey, 0));
+        }
+
         if (SystemInfo.supportsGyroscope)
         {
             Input.gyro.enabled = true;
 
-            // Activar automáticamente el giroscopio si es un dispositivo móvil
             if (Application.isMobilePlatform)
             {
                 useGyroscope = true;
-                Debug.Log("Control por giroscopio activado automáticamente en móvil.");
+                PlayerPrefs.SetInt(ControlModeKey, 1);
+                PlayerPrefs.Save();
             }
-        }
-        else
-        {
-            Debug.Log("El dispositivo no soporta giroscopio.");
         }
     }
 
-    // Update se ejecuta una vez por frame
-    void Update()
+    void FixedUpdate()
     {
-        if (!isColliding)
-        {
-            if (useGyroscope && SystemInfo.supportsGyroscope)
-            {
-                // Control por giroscopio
-                Vector3 gyroInput = Input.gyro.rotationRate; // Datos del giroscopio
-
-                // Movimiento lateral (rotación alrededor del eje Y)
-                transform.Translate(Vector3.right * gyroInput.y * lateralSpeed * Time.deltaTime);
-
-                // Movimiento vertical (rotación alrededor del eje X)
-                transform.Translate(Vector3.up * -gyroInput.x * verticalSpeed * Time.deltaTime);
-
-                // Inclinación del dron
-                float tilt = -gyroInput.y * tiltAngle;
-                transform.rotation = Quaternion.Euler(0, 0, tilt);
-            }
-            else
-            {
-                // Control estándar con teclas
-                float horizontalInput = Input.GetAxis("Horizontal"); // A/D o flechas izquierda/derecha
-                transform.Translate(Vector3.right * horizontalInput * lateralSpeed * Time.deltaTime);
-
-                float verticalInput = Input.GetAxis("Vertical"); // W/S o flechas arriba/abajo
-                if (verticalInput != 0)
-                {
-                    transform.Translate(Vector3.up * verticalInput * verticalSpeed * Time.deltaTime);
-                }
-
-                float tilt = -horizontalInput * tiltAngle;
-                transform.rotation = Quaternion.Euler(0, 0, tilt);
-
-                // Reproducir sonidos de movimiento
-                HandleMovementSounds();
-            }
-        }
-        else
+        if (isColliding)
         {
             StopMovement();
+            return;
         }
+
+        Vector2 input = useGyroscope && SystemInfo.supportsGyroscope ? ReadGyroscopeInput() : ReadKeyboardInput();
+        MoveDrone(input);
+        RotateDrone(input.x);
     }
 
-    // Este método se llama cuando el dron colisiona con otro objeto
+    void Update()
+    {
+        if (isColliding)
+        {
+            return;
+        }
+
+        Vector2 audioInput = useGyroscope && SystemInfo.supportsGyroscope ? ReadGyroscopeInput() : ReadKeyboardInput();
+        HandleMovementSounds(audioInput.x, audioInput.y);
+    }
+
     void OnCollisionEnter(Collision collision)
     {
         if (collision.gameObject.CompareTag("Obstacle") || collision.gameObject.CompareTag("Building"))
         {
+            if (isColliding)
+            {
+                return;
+            }
+
             isColliding = true;
+            movementSoundController?.StopMovementSounds();
+            spaceSoundController?.StopSpaceSound();
+            cameraFollow?.PlayCrashFeedback();
 
-            // Notificar al GameController que termine el juego
-            gameController.EndGame();
+            if (crashFlashRoutine != null)
+            {
+                StopCoroutine(crashFlashRoutine);
+            }
 
-            // Detener sonidos
-            movementSoundController.StopMovementSounds();
-            spaceSoundController.StopSpaceSound();
-
-            Debug.Log($"¡Colisión con un {collision.gameObject.tag}!");
+            crashFlashRoutine = StartCoroutine(CrashFlashRoutine());
+            gameController?.EndGame();
         }
     }
 
-    // Este método se llama cuando el dron deja de colisionar con otro objeto
     void OnCollisionExit(Collision collision)
     {
         if (collision.gameObject.CompareTag("Obstacle") || collision.gameObject.CompareTag("Building"))
@@ -117,55 +120,165 @@ public class DroneController : MonoBehaviour
         }
     }
 
-    // Alternar entre el control por giroscopio y teclado
     public void ToggleGyroscope()
     {
-        if (SystemInfo.supportsGyroscope)
+        if (!SystemInfo.supportsGyroscope)
         {
-            useGyroscope = !useGyroscope;
-            Debug.Log(useGyroscope ? "Control por giroscopio activado." : "Control por teclado activado.");
+            Debug.Log("El dispositivo no soporta giroscopio.");
+            return;
+        }
+
+        useGyroscope = !useGyroscope;
+        PlayerPrefs.SetInt(ControlModeKey, useGyroscope ? 1 : 0);
+        PlayerPrefs.Save();
+    }
+
+    private Vector2 ReadKeyboardInput()
+    {
+        return new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));
+    }
+
+    private Vector2 ReadGyroscopeInput()
+    {
+        Vector3 gyroInput = Input.gyro.rotationRate;
+        return new Vector2(gyroInput.y, -gyroInput.x);
+    }
+
+    private void MoveDrone(Vector2 input)
+    {
+        Vector3 targetVelocity = new Vector3(input.x * lateralSpeed, input.y * verticalSpeed, forwardSpeed);
+        smoothedVelocity = Vector3.Lerp(smoothedVelocity, targetVelocity, movementSmoothness * Time.fixedDeltaTime);
+
+        Vector3 nextPosition = rb.position + (smoothedVelocity * Time.fixedDeltaTime);
+        nextPosition.x = Mathf.Clamp(nextPosition.x, -horizontalLimit, horizontalLimit);
+        nextPosition.y = Mathf.Clamp(nextPosition.y, minHeight, maxHeight);
+
+        rb.MovePosition(nextPosition);
+    }
+
+    private void RotateDrone(float horizontalInput)
+    {
+        float targetTilt = -horizontalInput * tiltAngle;
+        Quaternion targetRotation = Quaternion.Euler(0f, 0f, targetTilt);
+        rb.MoveRotation(Quaternion.Slerp(rb.rotation, targetRotation, tiltSmoothness * Time.fixedDeltaTime));
+    }
+
+    private void HandleMovementSounds(float horizontalInput, float verticalInput)
+    {
+        float movementIntensity = Mathf.Clamp01(new Vector2(horizontalInput, verticalInput).magnitude);
+        bool boostActive = Input.GetKey(KeyCode.Space);
+
+        if (horizontalInput < -0.1f)
+        {
+            movementSoundController?.PlaySound(movementSoundController.aSound);
+        }
+        else if (horizontalInput > 0.1f)
+        {
+            movementSoundController?.PlaySound(movementSoundController.dSound);
+        }
+        else if (verticalInput > 0.1f)
+        {
+            movementSoundController?.PlaySound(movementSoundController.wSound);
+        }
+        else if (verticalInput < -0.1f)
+        {
+            movementSoundController?.PlaySound(movementSoundController.sSound);
         }
         else
         {
-            Debug.Log("El dispositivo no soporta giroscopio.");
+            movementSoundController?.StopMovementSounds();
         }
+
+        movementSoundController?.SetMovementState(movementIntensity, boostActive);
+        spaceSoundController?.SetBoostActive(boostActive);
     }
 
-    // Manejo de sonidos de movimiento
-    private void HandleMovementSounds()
-    {
-        if (Input.GetKey(KeyCode.A))
-        {
-            movementSoundController.PlaySound(movementSoundController.aSound);
-        }
-        if (Input.GetKey(KeyCode.S))
-        {
-            movementSoundController.PlaySound(movementSoundController.sSound);
-        }
-        if (Input.GetKey(KeyCode.W))
-        {
-            movementSoundController.PlaySound(movementSoundController.wSound);
-        }
-        if (Input.GetKey(KeyCode.D))
-        {
-            movementSoundController.PlaySound(movementSoundController.dSound);
-        }
-
-        if (Input.GetKeyDown(KeyCode.Space))
-        {
-            spaceSoundController.PlaySound(spaceSoundController.spaceSound);
-        }
-    }
-
-    // Detener el movimiento y sonidos
     private void StopMovement()
     {
-        movementSoundController.StopMovementSounds();
-        spaceSoundController.StopSpaceSound();
+        smoothedVelocity = Vector3.Lerp(smoothedVelocity, Vector3.zero, Time.fixedDeltaTime * 4f);
+        rb.linearVelocity = Vector3.zero;
+        movementSoundController?.StopMovementSounds();
+        spaceSoundController?.StopSpaceSound();
+    }
 
-        if (Input.GetAxis("Horizontal") == 0 && Input.GetAxis("Vertical") == 0)
+    private IEnumerator CrashFlashRoutine()
+    {
+        Color[] originalColors = new Color[droneRenderers.Length];
+
+        for (int i = 0; i < droneRenderers.Length; i++)
         {
-            rb.linearVelocity = Vector3.Lerp(rb.linearVelocity, Vector3.zero, Time.deltaTime * 2);
+            if (droneRenderers[i] != null && droneRenderers[i].material.HasProperty("_Color"))
+            {
+                originalColors[i] = droneRenderers[i].material.color;
+                droneRenderers[i].material.color = crashTint;
+            }
+        }
+
+        yield return new WaitForSecondsRealtime(crashFlashDuration);
+
+        for (int i = 0; i < droneRenderers.Length; i++)
+        {
+            if (droneRenderers[i] != null && droneRenderers[i].material.HasProperty("_Color"))
+            {
+                droneRenderers[i].material.color = originalColors[i];
+            }
+        }
+
+        crashFlashRoutine = null;
+    }
+}
+
+public class DroneSkinController : MonoBehaviour
+{
+    private static readonly Color[] SkinColors =
+    {
+        new Color(1f, 1f, 1f),
+        new Color(1f, 0.58f, 0.18f),
+        new Color(0.34f, 0.88f, 0.42f),
+        new Color(0.28f, 0.62f, 1f),
+        new Color(0.2f, 0.2f, 0.22f),
+        new Color(0.92f, 0.92f, 0.92f)
+    };
+
+    [Range(0.35f, 1.5f)]
+    public float tintStrength = 0.85f;
+
+    private Renderer[] cachedRenderers;
+    private Color[] baseColors;
+
+    void Awake()
+    {
+        cachedRenderers = GetComponentsInChildren<Renderer>(true);
+        baseColors = new Color[cachedRenderers.Length];
+
+        for (int i = 0; i < cachedRenderers.Length; i++)
+        {
+            if (cachedRenderers[i] != null && cachedRenderers[i].material.HasProperty("_Color"))
+            {
+                baseColors[i] = cachedRenderers[i].material.color;
+            }
+        }
+    }
+
+    public void ApplySkin(int skinIndex)
+    {
+        if (cachedRenderers == null || cachedRenderers.Length == 0)
+        {
+            return;
+        }
+
+        skinIndex = Mathf.Clamp(skinIndex, 0, SkinColors.Length - 1);
+        Color targetTint = SkinColors[skinIndex];
+
+        for (int i = 0; i < cachedRenderers.Length; i++)
+        {
+            if (cachedRenderers[i] == null || !cachedRenderers[i].material.HasProperty("_Color"))
+            {
+                continue;
+            }
+
+            Color baseColor = baseColors[i] == default ? Color.white : baseColors[i];
+            cachedRenderers[i].material.color = Color.Lerp(baseColor, targetTint, tintStrength);
         }
     }
 }

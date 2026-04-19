@@ -2,58 +2,49 @@ using UnityEngine;
 
 public class ObstacleMovement : MonoBehaviour
 {
-    public float speed = 20f;  // Velocidad del movimiento
-    public Transform drone;    // Referencia al dron
+    public float speed = 20f;
+    public Transform drone;
+    public float lateralSpeed = 2f;
+    public float verticalSpeed = 2f;
+    public float forwardSpeed = 2f;
 
-    // Parámetros de movimiento aleatorio
-    public float lateralSpeed = 2f;   // Velocidad lateral (X)
-    public float verticalSpeed = 2f;  // Velocidad vertical (Y)
-    public float forwardSpeed = 2f;   // Velocidad en el eje Z (adelante/atrás)
-    
-    private float randomMovementFactorX;  // Factor aleatorio en X
-    private float randomMovementFactorY;  // Factor aleatorio en Y
-    private float randomMovementFactorZ;  // Factor aleatorio en Z
+    private float randomMovementFactorX;
+    private float randomMovementFactorY;
+    private float randomMovementFactorZ;
 
-void Start()
-{
-    // Buscar el dron por tag
-    if (drone == null)
+    void Start()
     {
-        GameObject droneObject = GameObject.FindGameObjectWithTag("Drone");
-        if (droneObject != null)
-        {
-            drone = droneObject.transform;
-        }
-        else
-        {
-            Debug.LogError("No se encontró un objeto con el tag 'Drone'. Asegúrate de asignarlo o configurarlo en la escena.");
-        }
+        ResolveDroneReference();
+        RandomizeMovement();
     }
 
-    // Asignamos factores aleatorios para cada eje
-    randomMovementFactorX = Random.Range(-1f, 1f);
-    randomMovementFactorY = Random.Range(-1f, 1f);
-    randomMovementFactorZ = Random.Range(-1f, 1f);
-}
+    void OnEnable()
+    {
+        RandomizeMovement();
+    }
 
     void Update()
     {
-        // Movimiento hacia atrás en el eje Z
+        if (drone == null)
+        {
+            ResolveDroneReference();
+            if (drone == null)
+            {
+                return;
+            }
+        }
+
         transform.Translate(Vector3.back * speed * Time.deltaTime);
 
-        // Movimiento lateral (izquierda/derecha)
-        float lateralMovement = Mathf.Sin(Time.time * lateralSpeed) * randomMovementFactorX;  // Movimiento lateral
+        float lateralMovement = Mathf.Sin(Time.time * lateralSpeed) * randomMovementFactorX;
         transform.Translate(Vector3.right * lateralMovement * Time.deltaTime);
 
-        // Movimiento vertical (arriba/abajo)
-        float verticalMovement = Mathf.Cos(Time.time * verticalSpeed) * randomMovementFactorY;  // Movimiento vertical
+        float verticalMovement = Mathf.Cos(Time.time * verticalSpeed) * randomMovementFactorY;
         transform.Translate(Vector3.up * verticalMovement * Time.deltaTime);
 
-        // Movimiento hacia adelante/atrás (en el eje Z)
-        float forwardMovement = Mathf.Sin(Time.time * forwardSpeed) * randomMovementFactorZ;  // Movimiento hacia adelante/atrás
+        float forwardMovement = Mathf.Sin(Time.time * forwardSpeed) * randomMovementFactorZ;
         transform.Translate(Vector3.forward * forwardMovement * Time.deltaTime);
 
-        // Reposicionar si el obstáculo ha pasado el dron
         if (transform.position.z < drone.position.z - 20f)
         {
             ResetObstaclePosition();
@@ -62,11 +53,41 @@ void Start()
 
     public void ResetObstaclePosition()
     {
-        // Reposicionar el obstáculo al frente del dron
+        if (drone == null)
+        {
+            return;
+        }
+
         float newZPosition = drone.position.z + 100f;
-        float newXPosition = Random.Range(-5f, 5f);  // Posición lateral aleatoria
-        float newYPosition = Random.Range(1f, 10f);  // Posición vertical aleatoria
+        float newXPosition = drone.position.x + Random.Range(-5f, 5f);
+        float newYPosition = Random.Range(1f, 10f);
 
         transform.position = new Vector3(newXPosition, newYPosition, newZPosition);
+        RandomizeMovement();
+    }
+
+    private void ResolveDroneReference()
+    {
+        if (drone != null)
+        {
+            return;
+        }
+
+        GameObject droneObject = GameObject.FindGameObjectWithTag("Drone");
+        if (droneObject != null)
+        {
+            drone = droneObject.transform;
+        }
+        else
+        {
+            Debug.LogError("No se encontro un objeto con el tag 'Drone'.");
+        }
+    }
+
+    private void RandomizeMovement()
+    {
+        randomMovementFactorX = Random.Range(-1f, 1f);
+        randomMovementFactorY = Random.Range(-1f, 1f);
+        randomMovementFactorZ = Random.Range(-1f, 1f);
     }
 }

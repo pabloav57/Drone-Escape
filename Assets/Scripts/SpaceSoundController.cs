@@ -1,49 +1,71 @@
 using UnityEngine;
 
+[RequireComponent(typeof(AudioSource))]
 public class SpaceSoundController : MonoBehaviour
 {
-    private AudioSource audioSource; // Referencia al componente AudioSource
+    private AudioSource audioSource;
+    private float targetVolume;
+    private float targetPitch = 1f;
 
-    public AudioClip spaceSound; // Sonido para la tecla Espacio
-    private bool spaceSoundPlayed = false; // Para asegurar que el sonido de espacio solo se reproduce una vez
+    public AudioClip spaceSound;
+    public float activeVolume = 0.55f;
+    public float idlePitch = 0.95f;
+    public float boostPitch = 1.15f;
+    public float responseSpeed = 10f;
 
     void Start()
     {
-        // Obtener el componente AudioSource del GameObject
         audioSource = GetComponent<AudioSource>();
+        audioSource.playOnAwake = false;
+        audioSource.loop = true;
+        audioSource.volume = 0f;
+        audioSource.pitch = idlePitch;
     }
 
     void Update()
     {
-        // Si se pulsa la tecla Espacio y no se ha reproducido el sonido aún
-        if (Input.GetKeyDown(KeyCode.Space) && !spaceSoundPlayed)
+        if (audioSource == null)
         {
-            PlaySound(spaceSound); // Reproducir sonido de Espacio
-            spaceSoundPlayed = true; // Marcar que ya se ha reproducido el sonido de espacio
+            return;
         }
-    }
 
-    // Método para reproducir un sonido específico
-    public void PlaySound(AudioClip clip)
-    {
-        if (clip != null && audioSource != null)
-        {
-            if (!audioSource.isPlaying) // Reproducir solo si no está ya reproduciéndose
-            {
-                audioSource.clip = clip;
-                audioSource.loop = true; // Hacer el sonido de espacio en bucle
-                audioSource.Play();
-            }
-        }
-    }
+        audioSource.volume = Mathf.Lerp(audioSource.volume, targetVolume, responseSpeed * Time.deltaTime);
+        audioSource.pitch = Mathf.Lerp(audioSource.pitch, targetPitch, responseSpeed * Time.deltaTime);
 
-    // Método para detener el sonido de la tecla Espacio
-    public void StopSpaceSound()
-    {
-        if (audioSource.isPlaying)
+        if (audioSource.isPlaying && audioSource.volume < 0.02f && Mathf.Approximately(targetVolume, 0f))
         {
             audioSource.Stop();
-            spaceSoundPlayed = false; // Reiniciar el estado del sonido de espacio
         }
+    }
+
+    public void PlaySound(AudioClip clip)
+    {
+        if (clip == null || audioSource == null)
+        {
+            return;
+        }
+
+        audioSource.clip = clip;
+        if (!audioSource.isPlaying)
+        {
+            audioSource.Play();
+        }
+    }
+
+    public void SetBoostActive(bool isActive)
+    {
+        targetVolume = isActive ? activeVolume : 0f;
+        targetPitch = isActive ? boostPitch : idlePitch;
+
+        if (isActive)
+        {
+            PlaySound(spaceSound);
+        }
+    }
+
+    public void StopSpaceSound()
+    {
+        targetVolume = 0f;
+        targetPitch = idlePitch;
     }
 }

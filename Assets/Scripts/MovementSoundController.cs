@@ -1,61 +1,78 @@
 using UnityEngine;
 
+[RequireComponent(typeof(AudioSource))]
 public class MovementSoundController : MonoBehaviour
 {
-    private AudioSource audioSource; // Referencia al componente AudioSource
+    private AudioSource audioSource;
+    private AudioClip currentClip;
+    private float targetVolume;
+    private float targetPitch = 1f;
 
-    public AudioClip aSound;     // Sonido para la tecla A
-    public AudioClip sSound;     // Sonido para la tecla S
-    public AudioClip wSound;     // Sonido para la tecla W
-    public AudioClip dSound;     // Sonido para la tecla D
+    public AudioClip aSound;
+    public AudioClip sSound;
+    public AudioClip wSound;
+    public AudioClip dSound;
+    public float idleVolume = 0.05f;
+    public float maxVolume = 0.65f;
+    public float idlePitch = 0.9f;
+    public float maxPitch = 1.2f;
+    public float responseSpeed = 8f;
 
     void Start()
     {
-        // Obtener el componente AudioSource del GameObject
         audioSource = GetComponent<AudioSource>();
+        audioSource.loop = true;
+        audioSource.playOnAwake = false;
+        audioSource.volume = 0f;
+        audioSource.pitch = idlePitch;
     }
 
     void Update()
     {
-        // Detectar teclas específicas (ASDW) y reproducir sonido mientras estén presionadas
+        if (audioSource == null)
+        {
+            return;
+        }
 
-        if (Input.GetKey(KeyCode.A))
-        {
-            PlaySound(aSound); // Reproducir sonido de A
-        }
-        if (Input.GetKey(KeyCode.S))
-        {
-            PlaySound(sSound); // Reproducir sonido de S
-        }
-        if (Input.GetKey(KeyCode.W))
-        {
-            PlaySound(wSound); // Reproducir sonido de W
-        }
-        if (Input.GetKey(KeyCode.D))
-        {
-            PlaySound(dSound); // Reproducir sonido de D
-        }
-    }
+        audioSource.volume = Mathf.Lerp(audioSource.volume, targetVolume, responseSpeed * Time.deltaTime);
+        audioSource.pitch = Mathf.Lerp(audioSource.pitch, targetPitch, responseSpeed * Time.deltaTime);
 
-    // Método para reproducir un sonido específico
-    public void PlaySound(AudioClip clip)
-    {
-        if (clip != null && audioSource != null)
-        {
-            if (!audioSource.isPlaying) // Reproducir solo si no está ya reproduciéndose
-            {
-                audioSource.clip = clip;
-                audioSource.Play();
-            }
-        }
-    }
-
-    // Método para detener el sonido de las teclas ASDW
-    public void StopMovementSounds()
-    {
-        if (audioSource.isPlaying)
+        if (audioSource.isPlaying && audioSource.volume < 0.02f)
         {
             audioSource.Stop();
+            currentClip = null;
         }
+    }
+
+    public void PlaySound(AudioClip clip)
+    {
+        if (clip == null || audioSource == null)
+        {
+            return;
+        }
+
+        if (currentClip != clip)
+        {
+            currentClip = clip;
+            audioSource.clip = clip;
+        }
+
+        if (!audioSource.isPlaying)
+        {
+            audioSource.Play();
+        }
+    }
+
+    public void SetMovementState(float intensity, bool boosting)
+    {
+        intensity = Mathf.Clamp01(intensity);
+        targetVolume = Mathf.Lerp(idleVolume, maxVolume, intensity);
+        targetPitch = Mathf.Lerp(idlePitch, maxPitch + (boosting ? 0.08f : 0f), intensity);
+    }
+
+    public void StopMovementSounds()
+    {
+        targetVolume = 0f;
+        targetPitch = idlePitch;
     }
 }

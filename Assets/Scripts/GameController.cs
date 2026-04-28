@@ -7,7 +7,7 @@ using UnityEngine.UI;
 public class GameController : MonoBehaviour
 {
     private const string DifficultyKey = "SelectedDifficulty";
-    private const string BestScoreKey = "BestScore";
+    private const string BestScoreKey = "BestObstacleScore";
     private const string GameModeKey = "SelectedGameMode";
 
     public GameObject startMenu;
@@ -34,23 +34,31 @@ public class GameController : MonoBehaviour
     private bool isTransitioning;
     private int currentScore;
     private int bestScore;
-    private float startDistance;
     private int selectedDifficulty;
     private int selectedGameMode;
+    private bool pursuitActive;
+    private float pursuitRemainingTime;
     private CanvasGroup gameOverCanvasGroup;
+    private Image gameOverCard;
+    private Image hudLeftPanel;
+    private Image hudRightPanel;
     private Vector3 startTextBaseScale = Vector3.one;
+
+    public int CurrentScore => currentScore;
 
     void Start()
     {
         GameAudioSettings.Apply();
+        EnsureEnvironmentStyler();
         selectedDifficulty = PlayerPrefs.GetInt(DifficultyKey, 1);
         selectedGameMode = PlayerPrefs.GetInt(GameModeKey, 0);
         SetDifficulty(selectedDifficulty);
         bestScore = PlayerPrefs.GetInt(BestScoreKey, 0);
-        startDistance = drone != null ? drone.position.z : 0f;
 
         RegisterButtonCallbacks();
+        ConfigureHudPresentation();
         SetupMenuCanvasGroup();
+        ConfigureGameOverPresentation();
         HideMenus();
         RefreshHud();
         SetOverlayAlpha(1f);
@@ -69,7 +77,6 @@ public class GameController : MonoBehaviour
         if (!isGameOver && !isPaused)
         {
             elapsedTime += Time.deltaTime;
-            UpdateScore();
             RefreshHud();
         }
 
@@ -134,7 +141,6 @@ public class GameController : MonoBehaviour
 
         isGameOver = true;
         isPaused = true;
-        UpdateScore();
 
         if (currentScore > bestScore)
         {
@@ -156,11 +162,12 @@ public class GameController : MonoBehaviour
         {
             gameOverText.gameObject.SetActive(true);
             gameOverText.text =
-                "<size=60><color=red>Game Over!</color></size>\n\n" +
-                "Tiempo: " + elapsedTime.ToString("F2") + "s\n" +
-                "Puntuacion: " + currentScore + "\n" +
-                "Record: " + bestScore + "\n\n" +
-                "Presiona Espacio, Enter o el boton para reiniciar.";
+                "<size=54><color=#FF4D5E>Game Over</color></size>\n" +
+                "<size=26><color=#AAB6FF>Otra ronda y lo rompes.</color></size>\n\n" +
+                "<size=34>Obstaculos: <color=#FFFFFF>" + currentScore + "</color></size>\n" +
+                "<size=28>Record: <color=#FFE27A>" + bestScore + "</color></size>\n" +
+                "<size=24>Tiempo: " + elapsedTime.ToString("F2") + "s</size>\n\n" +
+                "<size=22><color=#BFC7D8>Espacio o Enter para reiniciar</color></size>";
         }
 
         if (resumeButton != null)
@@ -187,11 +194,12 @@ public class GameController : MonoBehaviour
         {
             gameOverText.gameObject.SetActive(true);
             gameOverText.text =
-                "<size=60><color=yellow>Pausa</color></size>\n\n" +
-                "Tiempo: " + elapsedTime.ToString("F2") + "s\n" +
-                "Puntuacion: " + currentScore + "\n" +
-                "Record: " + bestScore + "\n\n" +
-                "Presiona ESC o el boton para reanudar.";
+                "<size=54><color=#FFE27A>Pausa</color></size>\n" +
+                "<size=26><color=#AAB6FF>Respira, ajusta y sigue.</color></size>\n\n" +
+                "<size=34>Obstaculos: <color=#FFFFFF>" + currentScore + "</color></size>\n" +
+                "<size=28>Record: <color=#FFE27A>" + bestScore + "</color></size>\n" +
+                "<size=24>Tiempo: " + elapsedTime.ToString("F2") + "s</size>\n\n" +
+                "<size=22><color=#BFC7D8>ESC para reanudar</color></size>";
         }
 
         if (resumeButton != null)
@@ -227,7 +235,7 @@ public class GameController : MonoBehaviour
         }
 
         Time.timeScale = 1f;
-        StartCoroutine(ReloadSceneWithFade());
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
     public void ExitGame()
@@ -241,42 +249,138 @@ public class GameController : MonoBehaviour
         ResumeGame();
     }
 
-    private void UpdateScore()
+    public void AddObstaclePoint(int amount = 1)
     {
-        int timeScore = Mathf.FloorToInt(elapsedTime * 10f);
-        int distanceScore = 0;
-
-        if (drone != null)
+        if (isGameOver || isPaused || amount <= 0)
         {
-            distanceScore = Mathf.Max(0, Mathf.FloorToInt((drone.position.z - startDistance) * 2f));
+            return;
         }
 
-        int difficultyBonus = (selectedDifficulty + 1) * 25;
-        int modeBonus = GetModeScoreBonus();
-        currentScore = timeScore + distanceScore + difficultyBonus + modeBonus;
+        currentScore += amount;
+
+        if (currentScore > bestScore)
+        {
+            bestScore = currentScore;
+            PlayerPrefs.SetInt(BestScoreKey, bestScore);
+            PlayerPrefs.Save();
+        }
+
+        RefreshHud();
+    }
+
+    public void SetPursuitStatus(bool active, float remainingTime)
+    {
+        pursuitActive = active;
+        pursuitRemainingTime = Mathf.Max(0f, remainingTime);
+        RefreshHud();
     }
 
     private void RefreshHud()
     {
         if (timerText != null)
         {
-            timerText.text = "Tiempo: " + elapsedTime.ToString("F2") + "s";
+            timerText.text = "<size=18><color=#AEB8C8>TIEMPO</color></size>\n<size=30><b>" + elapsedTime.ToString("F1") + "s</b></size>";
         }
 
         if (scoreText != null)
         {
-            scoreText.text = "Puntuacion: " + currentScore;
+            scoreText.text = "<size=18><color=#AEB8C8>OBSTACULOS</color></size>\n<size=34><b>" + currentScore + "</b></size>";
         }
 
         if (bestScoreText != null)
         {
-            bestScoreText.text = "Record: " + bestScore;
+            bestScoreText.text = "<size=18><color=#AEB8C8>RECORD</color></size>\n<size=26><color=#FFE27A><b>" + bestScore + "</b></color></size>";
         }
 
         if (gameModeText != null)
         {
-            gameModeText.text = "Modo: " + GetModeName();
+            if (selectedGameMode == 3 && pursuitActive)
+            {
+                gameModeText.text = "<size=18><color=#AEB8C8>MODO</color></size>\n<size=24><b>Persecucion</b></size>\n<size=20><color=#FF4D5E>Perseguidor " + pursuitRemainingTime.ToString("F1") + "s</color></size>";
+            }
+            else if (selectedGameMode == 3)
+            {
+                gameModeText.text = "<size=18><color=#AEB8C8>MODO</color></size>\n<size=24><b>Persecucion</b></size>\n<size=20><color=#BFC7D8>Sin amenaza</color></size>";
+            }
+            else
+            {
+                gameModeText.text = "<size=18><color=#AEB8C8>MODO</color></size>\n<size=24><b>" + GetModeName() + "</b></size>";
+            }
         }
+    }
+
+    private void ConfigureHudPresentation()
+    {
+        Canvas parentCanvas = FindAnyObjectByType<Canvas>();
+        Transform hudParent = parentCanvas != null ? parentCanvas.transform : transform;
+
+        hudLeftPanel = CreateHudPanel("HudLeftPanel", hudParent, new Vector2(16f, -16f), new Vector2(230f, 245f), TextAnchor.UpperLeft);
+        hudRightPanel = CreateHudPanel("HudRightPanel", hudParent, new Vector2(-16f, -16f), new Vector2(170f, 86f), TextAnchor.UpperRight);
+
+        StyleHudText(scoreText, new Vector2(18f, -18f), new Vector2(190f, 66f), TextAlignmentOptions.TopLeft);
+        StyleHudText(bestScoreText, new Vector2(18f, -92f), new Vector2(190f, 58f), TextAlignmentOptions.TopLeft);
+        StyleHudText(gameModeText, new Vector2(18f, -156f), new Vector2(200f, 78f), TextAlignmentOptions.TopLeft);
+        StyleHudText(timerText, new Vector2(-18f, -14f), new Vector2(135f, 64f), TextAlignmentOptions.TopRight);
+    }
+
+    private Image CreateHudPanel(string objectName, Transform parent, Vector2 position, Vector2 size, TextAnchor anchor)
+    {
+        Transform existing = parent.Find(objectName);
+        Image panel = existing != null ? existing.GetComponent<Image>() : null;
+        if (panel == null)
+        {
+            GameObject panelObject = new GameObject(objectName, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            panelObject.transform.SetParent(parent, false);
+            panel = panelObject.GetComponent<Image>();
+        }
+
+        panel.color = new Color(0.025f, 0.035f, 0.05f, 0.48f);
+        panel.raycastTarget = false;
+
+        RectTransform rect = panel.rectTransform;
+        if (anchor == TextAnchor.UpperRight)
+        {
+            rect.anchorMin = new Vector2(1f, 1f);
+            rect.anchorMax = new Vector2(1f, 1f);
+            rect.pivot = new Vector2(1f, 1f);
+        }
+        else
+        {
+            rect.anchorMin = new Vector2(0f, 1f);
+            rect.anchorMax = new Vector2(0f, 1f);
+            rect.pivot = new Vector2(0f, 1f);
+        }
+
+        rect.anchoredPosition = position;
+        rect.sizeDelta = size;
+        rect.SetAsFirstSibling();
+        return panel;
+    }
+
+    private void StyleHudText(TextMeshProUGUI text, Vector2 position, Vector2 size, TextAlignmentOptions alignment)
+    {
+        if (text == null)
+        {
+            return;
+        }
+
+        text.fontSize = 24f;
+        text.enableAutoSizing = true;
+        text.fontSizeMin = 15f;
+        text.fontSizeMax = 34f;
+        text.color = new Color(0.92f, 0.96f, 1f, 1f);
+        text.alignment = alignment;
+        text.raycastTarget = false;
+        text.lineSpacing = -8f;
+
+        RectTransform rect = text.rectTransform;
+        bool rightAligned = alignment == TextAlignmentOptions.TopRight;
+
+        rect.anchorMin = rightAligned ? new Vector2(1f, 1f) : new Vector2(0f, 1f);
+        rect.anchorMax = rightAligned ? new Vector2(1f, 1f) : new Vector2(0f, 1f);
+        rect.pivot = rightAligned ? new Vector2(1f, 1f) : new Vector2(0f, 1f);
+        rect.anchoredPosition = position;
+        rect.sizeDelta = size;
     }
 
     private void RegisterButtonCallbacks()
@@ -300,6 +404,16 @@ public class GameController : MonoBehaviour
         }
     }
 
+    private void EnsureEnvironmentStyler()
+    {
+        if (FindAnyObjectByType<EnvironmentStyler>() != null)
+        {
+            return;
+        }
+
+        gameObject.AddComponent<EnvironmentStyler>();
+    }
+
     private void SetupMenuCanvasGroup()
     {
         if (gameOverMenu == null)
@@ -316,6 +430,159 @@ public class GameController : MonoBehaviour
         gameOverCanvasGroup.alpha = 0f;
         gameOverCanvasGroup.interactable = false;
         gameOverCanvasGroup.blocksRaycasts = false;
+    }
+
+    private void ConfigureGameOverPresentation()
+    {
+        if (gameOverMenu == null)
+        {
+            return;
+        }
+
+        Image overlay = gameOverMenu.GetComponent<Image>();
+        if (overlay != null)
+        {
+            overlay.color = new Color(0.02f, 0.03f, 0.05f, 0.62f);
+        }
+
+        CreateOrUpdateGameOverCard();
+        ConfigureMenuText();
+        ConfigureMenuButtons();
+    }
+
+    private void CreateOrUpdateGameOverCard()
+    {
+        Transform existingCard = gameOverMenu.transform.Find("GameOverCard");
+        if (existingCard != null)
+        {
+            gameOverCard = existingCard.GetComponent<Image>();
+        }
+
+        if (gameOverCard == null)
+        {
+            GameObject cardObject = new GameObject("GameOverCard", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            cardObject.transform.SetParent(gameOverMenu.transform, false);
+            cardObject.transform.SetAsFirstSibling();
+            gameOverCard = cardObject.GetComponent<Image>();
+        }
+
+        gameOverCard.color = new Color(0.035f, 0.045f, 0.065f, 0.9f);
+        gameOverCard.raycastTarget = false;
+
+        RectTransform cardRect = gameOverCard.rectTransform;
+        cardRect.anchorMin = new Vector2(0.5f, 0.5f);
+        cardRect.anchorMax = new Vector2(0.5f, 0.5f);
+        cardRect.pivot = new Vector2(0.5f, 0.5f);
+        cardRect.anchoredPosition = new Vector2(0f, -10f);
+        cardRect.sizeDelta = new Vector2(620f, 430f);
+    }
+
+    private void ConfigureMenuText()
+    {
+        if (gameOverText == null)
+        {
+            return;
+        }
+
+        gameOverText.alignment = TextAlignmentOptions.Center;
+        gameOverText.color = new Color(0.9f, 0.94f, 1f, 1f);
+        gameOverText.fontSize = 30f;
+        gameOverText.enableAutoSizing = true;
+        gameOverText.fontSizeMin = 18f;
+        gameOverText.fontSizeMax = 54f;
+        gameOverText.lineSpacing = 8f;
+        gameOverText.margin = new Vector4(24f, 12f, 24f, 12f);
+
+        RectTransform textRect = gameOverText.rectTransform;
+        textRect.anchorMin = new Vector2(0.5f, 0.5f);
+        textRect.anchorMax = new Vector2(0.5f, 0.5f);
+        textRect.pivot = new Vector2(0.5f, 0.5f);
+        textRect.anchoredPosition = new Vector2(0f, 35f);
+        textRect.sizeDelta = new Vector2(540f, 300f);
+    }
+
+    private void ConfigureMenuButtons()
+    {
+        Transform buttonContainer = null;
+
+        if (restartButton != null)
+        {
+            buttonContainer = restartButton.transform.parent;
+        }
+        else if (exitButton != null)
+        {
+            buttonContainer = exitButton.transform.parent;
+        }
+
+        RectTransform containerRect = buttonContainer as RectTransform;
+        if (containerRect != null)
+        {
+            containerRect.anchorMin = new Vector2(0.5f, 0.5f);
+            containerRect.anchorMax = new Vector2(0.5f, 0.5f);
+            containerRect.pivot = new Vector2(0.5f, 0.5f);
+            containerRect.anchoredPosition = new Vector2(0f, -150f);
+            containerRect.sizeDelta = new Vector2(520f, 58f);
+
+            HorizontalLayoutGroup layout = containerRect.GetComponent<HorizontalLayoutGroup>();
+            if (layout != null)
+            {
+                layout.padding = new RectOffset(0, 0, 0, 0);
+                layout.spacing = 14f;
+                layout.childAlignment = TextAnchor.MiddleCenter;
+                layout.childControlWidth = true;
+                layout.childControlHeight = true;
+                layout.childForceExpandWidth = true;
+                layout.childForceExpandHeight = true;
+            }
+        }
+
+        StyleMenuButton(resumeButton, "Reanudar", new Color(0.34f, 0.75f, 1f, 1f));
+        StyleMenuButton(restartButton, "Reintentar", new Color(0.38f, 0.84f, 0.58f, 1f));
+        StyleMenuButton(exitButton, "Salir", new Color(0.95f, 0.4f, 0.45f, 1f));
+    }
+
+    private void StyleMenuButton(Button button, string label, Color color)
+    {
+        if (button == null)
+        {
+            return;
+        }
+
+        Image buttonImage = button.GetComponent<Image>();
+        if (buttonImage != null)
+        {
+            buttonImage.color = color;
+        }
+
+        ColorBlock colors = button.colors;
+        colors.normalColor = color;
+        colors.highlightedColor = Color.Lerp(color, Color.white, 0.18f);
+        colors.pressedColor = Color.Lerp(color, Color.black, 0.12f);
+        colors.selectedColor = colors.highlightedColor;
+        colors.disabledColor = new Color(color.r, color.g, color.b, 0.35f);
+        colors.fadeDuration = 0.08f;
+        button.colors = colors;
+
+        LayoutElement layoutElement = button.GetComponent<LayoutElement>();
+        if (layoutElement == null)
+        {
+            layoutElement = button.gameObject.AddComponent<LayoutElement>();
+        }
+
+        layoutElement.minWidth = 150f;
+        layoutElement.preferredWidth = 170f;
+        layoutElement.minHeight = 52f;
+        layoutElement.preferredHeight = 52f;
+
+        TextMeshProUGUI labelText = button.GetComponentInChildren<TextMeshProUGUI>(true);
+        if (labelText != null)
+        {
+            labelText.text = label;
+            labelText.color = Color.white;
+            labelText.fontSize = 22f;
+            labelText.fontStyle = FontStyles.Bold;
+            labelText.alignment = TextAlignmentOptions.Center;
+        }
     }
 
     private void HideMenus()
@@ -346,19 +613,6 @@ public class GameController : MonoBehaviour
             startMenu.SetActive(false);
     }
 
-    private int GetModeScoreBonus()
-    {
-        switch (selectedGameMode)
-        {
-            case 1:
-                return 10;
-            case 2:
-                return 40;
-            default:
-                return 20;
-        }
-    }
-
     private string GetModeName()
     {
         switch (selectedGameMode)
@@ -367,6 +621,8 @@ public class GameController : MonoBehaviour
                 return "Zen";
             case 2:
                 return "Rush";
+            case 3:
+                return "Persecucion";
             default:
                 return "Clasico";
         }

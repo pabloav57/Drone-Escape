@@ -13,16 +13,19 @@ public class DroneController : MonoBehaviour
     public float tiltAngle = 30f;
     public float tiltSmoothness = 8f;
     public float movementSmoothness = 10f;
-    public float horizontalLimit = 20f;
+    public float horizontalLimit = 36f;
     public float minHeight = 1.5f;
     public float maxHeight = 18f;
     public Color crashTint = new Color(1f, 0.3f, 0.3f, 1f);
     public float crashFlashDuration = 0.35f;
+    public float instabilityRecoverySpeed = 2.4f;
+    public float maxInstability = 0.85f;
 
     private bool isColliding;
     private Rigidbody rb;
     private bool useGyroscope;
     private Vector3 smoothedVelocity;
+    private Vector2 instabilityInput;
     private Renderer[] droneRenderers;
     private CameraFollow cameraFollow;
     private Coroutine crashFlashRoutine;
@@ -34,6 +37,8 @@ public class DroneController : MonoBehaviour
 
     void Start()
     {
+        horizontalLimit = Mathf.Max(horizontalLimit, 36f);
+
         rb = GetComponent<Rigidbody>();
         rb.isKinematic = false;
         rb.useGravity = false;
@@ -44,12 +49,14 @@ public class DroneController : MonoBehaviour
         droneRenderers = GetComponentsInChildren<Renderer>(true);
         cameraFollow = FindAnyObjectByType<CameraFollow>();
         skinController = GetComponent<DroneSkinController>();
+        if (skinController == null)
+        {
+            skinController = gameObject.AddComponent<DroneSkinController>();
+        }
+
         useGyroscope = PlayerPrefs.GetInt(ControlModeKey, 0) == 1;
 
-        if (skinController != null)
-        {
-            skinController.ApplySkin(PlayerPrefs.GetInt(SkinKey, 0));
-        }
+        skinController.ApplySkin(PlayerPrefs.GetInt(SkinKey, 0));
 
         if (SystemInfo.supportsGyroscope)
         {
@@ -73,6 +80,10 @@ public class DroneController : MonoBehaviour
         }
 
         Vector2 input = useGyroscope && SystemInfo.supportsGyroscope ? ReadGyroscopeInput() : ReadKeyboardInput();
+        input += instabilityInput;
+        input = Vector2.ClampMagnitude(input, 1f);
+        instabilityInput = Vector2.Lerp(instabilityInput, Vector2.zero, instabilityRecoverySpeed * Time.fixedDeltaTime);
+
         MoveDrone(input);
         RotateDrone(input.x);
     }
@@ -90,31 +101,23 @@ public class DroneController : MonoBehaviour
 
     void OnCollisionEnter(Collision collision)
     {
-        if (collision.gameObject.CompareTag("Obstacle") || collision.gameObject.CompareTag("Building"))
+        if (IsDangerousHit(collision.transform))
         {
-            if (isColliding)
-            {
-                return;
-            }
+            Crash();
+        }
+    }
 
-            isColliding = true;
-            movementSoundController?.StopMovementSounds();
-            spaceSoundController?.StopSpaceSound();
-            cameraFollow?.PlayCrashFeedback();
-
-            if (crashFlashRoutine != null)
-            {
-                StopCoroutine(crashFlashRoutine);
-            }
-
-            crashFlashRoutine = StartCoroutine(CrashFlashRoutine());
-            gameController?.EndGame();
+    void OnTriggerEnter(Collider other)
+    {
+        if (IsDangerousHit(other.transform))
+        {
+            Crash();
         }
     }
 
     void OnCollisionExit(Collision collision)
     {
-        if (collision.gameObject.CompareTag("Obstacle") || collision.gameObject.CompareTag("Building"))
+        if (IsDangerousHit(collision.transform))
         {
             isColliding = false;
         }
@@ -131,6 +134,63 @@ public class DroneController : MonoBehaviour
         useGyroscope = !useGyroscope;
         PlayerPrefs.SetInt(ControlModeKey, useGyroscope ? 1 : 0);
         PlayerPrefs.Save();
+    }
+
+    public void ApplyInstability(Vector2 impulse)
+    {
+        if (isColliding)
+        {
+            return;
+        }
+
+        instabilityInput = Vector2.ClampMagnitude(instabilityInput + impulse, maxInstability);
+    }
+
+    private void Crash()
+    {
+        if (isColliding)
+        {
+            return;
+        }
+
+        isColliding = true;
+        movementSoundController?.StopMovementSounds();
+        spaceSoundController?.StopSpaceSound();
+        cameraFollow?.PlayCrashFeedback();
+
+        if (crashFlashRoutine != null)
+        {
+            StopCoroutine(crashFlashRoutine);
+        }
+
+        crashFlashRoutine = StartCoroutine(CrashFlashRoutine());
+        gameController?.EndGame();
+    }
+
+    private bool IsDangerousHit(Transform hitTransform)
+    {
+        Transform current = hitTransform;
+        while (current != null)
+        {
+            if (current.GetComponent<ObstacleSpawner>() != null || current.GetComponent<BuildingSpawner>() != null)
+            {
+                return false;
+            }
+
+            if (current.GetComponent<ErraticDroneMovement>() != null || current.GetComponent<ObstacleMovement>() != null)
+            {
+                return true;
+            }
+
+            if (current.CompareTag("Building"))
+            {
+                return true;
+            }
+
+            current = current.parent;
+        }
+
+        return false;
     }
 
     private Vector2 ReadKeyboardInput()
@@ -230,6 +290,8 @@ public class DroneController : MonoBehaviour
 
 public class DroneSkinController : MonoBehaviour
 {
+    public const string SkinKey = "SelectedSkin";
+
     private static readonly Color[] SkinColors =
     {
         new Color(1f, 1f, 1f),
@@ -244,20 +306,20 @@ public class DroneSkinController : MonoBehaviour
     public float tintStrength = 0.85f;
 
     private Renderer[] cachedRenderers;
-    private Color[] baseColors;
 
     void Awake()
     {
         cachedRenderers = GetComponentsInChildren<Renderer>(true);
-        baseColors = new Color[cachedRenderers.Length];
+    }
 
-        for (int i = 0; i < cachedRenderers.Length; i++)
-        {
-            if (cachedRenderers[i] != null && cachedRenderers[i].material.HasProperty("_Color"))
-            {
-                baseColors[i] = cachedRenderers[i].material.color;
-            }
-        }
+    void OnEnable()
+    {
+        ApplySavedSkin();
+    }
+
+    public void ApplySavedSkin()
+    {
+        ApplySkin(PlayerPrefs.GetInt(SkinKey, 0));
     }
 
     public void ApplySkin(int skinIndex)
@@ -269,16 +331,38 @@ public class DroneSkinController : MonoBehaviour
 
         skinIndex = Mathf.Clamp(skinIndex, 0, SkinColors.Length - 1);
         Color targetTint = SkinColors[skinIndex];
+        Color appliedColor = Color.Lerp(Color.white, targetTint, tintStrength);
 
         for (int i = 0; i < cachedRenderers.Length; i++)
         {
-            if (cachedRenderers[i] == null || !cachedRenderers[i].material.HasProperty("_Color"))
+            if (cachedRenderers[i] == null)
             {
                 continue;
             }
 
-            Color baseColor = baseColors[i] == default ? Color.white : baseColors[i];
-            cachedRenderers[i].material.color = Color.Lerp(baseColor, targetTint, tintStrength);
+            Material[] materials = cachedRenderers[i].materials;
+            for (int materialIndex = 0; materialIndex < materials.Length; materialIndex++)
+            {
+                ApplyColorToMaterial(materials[materialIndex], appliedColor);
+            }
+        }
+    }
+
+    private void ApplyColorToMaterial(Material material, Color color)
+    {
+        if (material == null)
+        {
+            return;
+        }
+
+        if (material.HasProperty("_BaseColor"))
+        {
+            material.SetColor("_BaseColor", color);
+        }
+
+        if (material.HasProperty("_Color"))
+        {
+            material.SetColor("_Color", color);
         }
     }
 }

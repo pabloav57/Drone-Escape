@@ -3,6 +3,9 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 public class GameController : MonoBehaviour
 {
@@ -20,13 +23,21 @@ public class GameController : MonoBehaviour
     public Button restartButton;
     public Button exitButton;
     public Button resumeButton;
+    public Button mainMenuButton;
     public GameObject gameOverMenu;
     public Transform drone;
     public Image transitionOverlay;
+    public string mainMenuSceneName = "MainScene";
     public float transitionDuration = 0.3f;
     public float countdownPopScale = 1.2f;
     public float countdownPulseSpeed = 8f;
     public float menuFadeDuration = 0.25f;
+    public float scorePopScale = 1.18f;
+    public float scorePopDuration = 0.18f;
+    public AudioClip gameStartClip;
+    public AudioClip gameOverClip;
+    [Range(0f, 1f)] public float gameStartVolume = 0.75f;
+    [Range(0f, 1f)] public float gameOverVolume = 0.85f;
 
     private float elapsedTime;
     private bool isGameOver;
@@ -42,18 +53,46 @@ public class GameController : MonoBehaviour
     private Image gameOverCard;
     private Image hudLeftPanel;
     private Image hudRightPanel;
+    private Image impactFlashImage;
+    private TextMeshProUGUI scorePopupText;
+    private TextMeshProUGUI recordPopupText;
+    private TextMeshProUGUI objectiveText;
+    private TextMeshProUGUI objectivePopupText;
     private Vector3 startTextBaseScale = Vector3.one;
+    private Vector3 scoreTextBaseScale = Vector3.one;
+    private Vector3 bestScoreTextBaseScale = Vector3.one;
+    private bool reachedNewRecord;
+    private bool objectiveCompleted;
+    private int objectiveScoreTarget;
+    private float objectiveTimeTarget;
+    private string objectiveTitle;
+    private Coroutine scorePulseRoutine;
+    private Coroutine scorePopupRoutine;
+    private Coroutine impactFlashRoutine;
+    private Coroutine objectivePopupRoutine;
+    private AudioSource feedbackAudioSource;
+    private AudioClip scoreBlipClip;
+    private AudioClip recordBlipClip;
 
     public int CurrentScore => currentScore;
+
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        AutoAssignFeedbackClips();
+    }
+#endif
 
     void Start()
     {
         GameAudioSettings.Apply();
+        AutoAssignFeedbackClips();
         EnsureEnvironmentStyler();
         selectedDifficulty = PlayerPrefs.GetInt(DifficultyKey, 1);
         selectedGameMode = PlayerPrefs.GetInt(GameModeKey, 0);
         SetDifficulty(selectedDifficulty);
         bestScore = PlayerPrefs.GetInt(BestScoreKey, 0);
+        ConfigureRunObjective();
 
         RegisterButtonCallbacks();
         ConfigureHudPresentation();
@@ -68,6 +107,16 @@ public class GameController : MonoBehaviour
             startTextBaseScale = startText.transform.localScale;
         }
 
+        if (scoreText != null)
+        {
+            scoreTextBaseScale = scoreText.transform.localScale;
+        }
+
+        if (bestScoreText != null)
+        {
+            bestScoreTextBaseScale = bestScoreText.transform.localScale;
+        }
+
         Time.timeScale = 0f;
         StartCoroutine(SceneIntroRoutine());
     }
@@ -78,6 +127,7 @@ public class GameController : MonoBehaviour
         {
             elapsedTime += Time.deltaTime;
             RefreshHud();
+            EvaluateRunObjective();
         }
 
         if (Input.GetKeyDown(KeyCode.Escape))
@@ -110,6 +160,7 @@ public class GameController : MonoBehaviour
         {
             isPaused = false;
             Time.timeScale = 1f;
+            PlayGameStartSound();
             yield break;
         }
 
@@ -125,6 +176,7 @@ public class GameController : MonoBehaviour
         startText.transform.localScale = startTextBaseScale;
         isPaused = false;
         Time.timeScale = 1f;
+        PlayGameStartSound();
     }
 
     void SetDifficulty(int difficultyIndex)
@@ -141,10 +193,12 @@ public class GameController : MonoBehaviour
 
         isGameOver = true;
         isPaused = true;
+        PlayGameOverSound();
 
         if (currentScore > bestScore)
         {
             bestScore = currentScore;
+            reachedNewRecord = true;
             PlayerPrefs.SetInt(BestScoreKey, bestScore);
             PlayerPrefs.Save();
         }
@@ -164,6 +218,8 @@ public class GameController : MonoBehaviour
             gameOverText.text =
                 "<size=54><color=#FF4D5E>Game Over</color></size>\n" +
                 "<size=26><color=#AAB6FF>Otra ronda y lo rompes.</color></size>\n\n" +
+                (reachedNewRecord ? "<size=28><color=#FFE27A><b>NUEVO RECORD</b></color></size>\n" : "") +
+                (objectiveCompleted ? "<size=24><color=#6DFF9C><b>OBJETIVO COMPLETADO</b></color></size>\n" : "") +
                 "<size=34>Obstaculos: <color=#FFFFFF>" + currentScore + "</color></size>\n" +
                 "<size=28>Record: <color=#FFE27A>" + bestScore + "</color></size>\n" +
                 "<size=24>Tiempo: " + elapsedTime.ToString("F2") + "s</size>\n\n" +
@@ -178,6 +234,9 @@ public class GameController : MonoBehaviour
 
         if (exitButton != null)
             exitButton.gameObject.SetActive(true);
+
+        if (mainMenuButton != null)
+            mainMenuButton.gameObject.SetActive(true);
 
         StartCoroutine(FadeMenuCanvas(1f));
     }
@@ -197,6 +256,7 @@ public class GameController : MonoBehaviour
                 "<size=54><color=#FFE27A>Pausa</color></size>\n" +
                 "<size=26><color=#AAB6FF>Respira, ajusta y sigue.</color></size>\n\n" +
                 "<size=34>Obstaculos: <color=#FFFFFF>" + currentScore + "</color></size>\n" +
+                "<size=24>Objetivo: <color=#6DFF9C>" + GetObjectiveProgressText() + "</color></size>\n" +
                 "<size=28>Record: <color=#FFE27A>" + bestScore + "</color></size>\n" +
                 "<size=24>Tiempo: " + elapsedTime.ToString("F2") + "s</size>\n\n" +
                 "<size=22><color=#BFC7D8>ESC para reanudar</color></size>";
@@ -210,6 +270,9 @@ public class GameController : MonoBehaviour
 
         if (exitButton != null)
             exitButton.gameObject.SetActive(true);
+
+        if (mainMenuButton != null)
+            mainMenuButton.gameObject.SetActive(true);
 
         StartCoroutine(FadeMenuCanvas(1f));
     }
@@ -244,6 +307,12 @@ public class GameController : MonoBehaviour
         Application.Quit();
     }
 
+    public void ReturnToMainMenu()
+    {
+        Time.timeScale = 1f;
+        SceneManager.LoadScene(mainMenuSceneName);
+    }
+
     public void ResumeGameFromButton()
     {
         ResumeGame();
@@ -258,14 +327,31 @@ public class GameController : MonoBehaviour
 
         currentScore += amount;
 
-        if (currentScore > bestScore)
+        bool isNewRecord = currentScore > bestScore;
+
+        if (isNewRecord)
         {
             bestScore = currentScore;
+            reachedNewRecord = true;
             PlayerPrefs.SetInt(BestScoreKey, bestScore);
             PlayerPrefs.Save();
         }
 
+        PlayScoreFeedback(amount, isNewRecord);
         RefreshHud();
+        EvaluateRunObjective();
+    }
+
+    public void PlayImpactFeedback(Vector3 worldPosition)
+    {
+        CreateImpactParticles(worldPosition);
+
+        if (impactFlashRoutine != null)
+        {
+            StopCoroutine(impactFlashRoutine);
+        }
+
+        impactFlashRoutine = StartCoroutine(ImpactFlashRoutine());
     }
 
     public void SetPursuitStatus(bool active, float remainingTime)
@@ -307,6 +393,8 @@ public class GameController : MonoBehaviour
                 gameModeText.text = "<size=18><color=#AEB8C8>MODO</color></size>\n<size=24><b>" + GetModeName() + "</b></size>";
             }
         }
+
+        RefreshObjectiveHud();
     }
 
     private void ConfigureHudPresentation()
@@ -321,6 +409,12 @@ public class GameController : MonoBehaviour
         StyleHudText(bestScoreText, new Vector2(18f, -92f), new Vector2(190f, 58f), TextAlignmentOptions.TopLeft);
         StyleHudText(gameModeText, new Vector2(18f, -156f), new Vector2(200f, 78f), TextAlignmentOptions.TopLeft);
         StyleHudText(timerText, new Vector2(-18f, -14f), new Vector2(135f, 64f), TextAlignmentOptions.TopRight);
+        CreateScorePopupText(hudParent);
+        CreateRecordPopupText(hudParent);
+        CreateObjectiveText(hudParent);
+        CreateObjectivePopupText(hudParent);
+        CreateImpactFlashImage(hudParent);
+        ConfigureFeedbackAudio();
     }
 
     private Image CreateHudPanel(string objectName, Transform parent, Vector2 position, Vector2 size, TextAnchor anchor)
@@ -383,6 +477,509 @@ public class GameController : MonoBehaviour
         rect.sizeDelta = size;
     }
 
+    private void CreateScorePopupText(Transform parent)
+    {
+        if (scorePopupText != null || scoreText == null)
+        {
+            return;
+        }
+
+        GameObject popupObject = new GameObject("ScorePopupText", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+        popupObject.transform.SetParent(parent, false);
+        scorePopupText = popupObject.GetComponent<TextMeshProUGUI>();
+        scorePopupText.text = "";
+        scorePopupText.font = scoreText.font;
+        scorePopupText.fontSize = 28f;
+        scorePopupText.fontStyle = FontStyles.Bold;
+        scorePopupText.alignment = TextAlignmentOptions.TopLeft;
+        scorePopupText.color = new Color(0.45f, 1f, 0.68f, 0f);
+        scorePopupText.raycastTarget = false;
+
+        RectTransform rect = scorePopupText.rectTransform;
+        rect.anchorMin = new Vector2(0f, 1f);
+        rect.anchorMax = new Vector2(0f, 1f);
+        rect.pivot = new Vector2(0f, 1f);
+        rect.anchoredPosition = new Vector2(154f, -38f);
+        rect.sizeDelta = new Vector2(150f, 42f);
+    }
+
+    private void CreateRecordPopupText(Transform parent)
+    {
+        if (recordPopupText != null || bestScoreText == null)
+        {
+            return;
+        }
+
+        GameObject popupObject = new GameObject("RecordPopupText", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+        popupObject.transform.SetParent(parent, false);
+        recordPopupText = popupObject.GetComponent<TextMeshProUGUI>();
+        recordPopupText.text = "";
+        recordPopupText.font = bestScoreText.font;
+        recordPopupText.fontSize = 24f;
+        recordPopupText.fontStyle = FontStyles.Bold;
+        recordPopupText.alignment = TextAlignmentOptions.Center;
+        recordPopupText.color = new Color(1f, 0.88f, 0.28f, 0f);
+        recordPopupText.raycastTarget = false;
+
+        RectTransform rect = recordPopupText.rectTransform;
+        rect.anchorMin = new Vector2(0.5f, 1f);
+        rect.anchorMax = new Vector2(0.5f, 1f);
+        rect.pivot = new Vector2(0.5f, 1f);
+        rect.anchoredPosition = new Vector2(0f, -92f);
+        rect.sizeDelta = new Vector2(360f, 48f);
+    }
+
+    private void CreateObjectiveText(Transform parent)
+    {
+        if (objectiveText != null)
+        {
+            return;
+        }
+
+        GameObject objectiveObject = new GameObject("ObjectiveText", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+        objectiveObject.transform.SetParent(parent, false);
+        objectiveText = objectiveObject.GetComponent<TextMeshProUGUI>();
+        objectiveText.text = "";
+        objectiveText.font = scoreText != null ? scoreText.font : null;
+        objectiveText.fontSize = 22f;
+        objectiveText.fontStyle = FontStyles.Bold;
+        objectiveText.enableAutoSizing = true;
+        objectiveText.fontSizeMin = 14f;
+        objectiveText.fontSizeMax = 24f;
+        objectiveText.alignment = TextAlignmentOptions.Center;
+        objectiveText.color = new Color(0.92f, 0.96f, 1f, 0.95f);
+        objectiveText.raycastTarget = false;
+
+        RectTransform rect = objectiveText.rectTransform;
+        rect.anchorMin = new Vector2(0.5f, 1f);
+        rect.anchorMax = new Vector2(0.5f, 1f);
+        rect.pivot = new Vector2(0.5f, 1f);
+        rect.anchoredPosition = new Vector2(0f, -18f);
+        rect.sizeDelta = new Vector2(520f, 58f);
+    }
+
+    private void CreateObjectivePopupText(Transform parent)
+    {
+        if (objectivePopupText != null)
+        {
+            return;
+        }
+
+        GameObject popupObject = new GameObject("ObjectivePopupText", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+        popupObject.transform.SetParent(parent, false);
+        objectivePopupText = popupObject.GetComponent<TextMeshProUGUI>();
+        objectivePopupText.text = "";
+        objectivePopupText.font = objectiveText != null ? objectiveText.font : null;
+        objectivePopupText.fontSize = 34f;
+        objectivePopupText.fontStyle = FontStyles.Bold;
+        objectivePopupText.alignment = TextAlignmentOptions.Center;
+        objectivePopupText.color = new Color(0.42f, 1f, 0.62f, 0f);
+        objectivePopupText.raycastTarget = false;
+
+        RectTransform rect = objectivePopupText.rectTransform;
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = new Vector2(0f, 120f);
+        rect.sizeDelta = new Vector2(560f, 72f);
+    }
+
+    private void CreateImpactFlashImage(Transform parent)
+    {
+        if (impactFlashImage != null)
+        {
+            return;
+        }
+
+        GameObject flashObject = new GameObject("ImpactFlash", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        flashObject.transform.SetParent(parent, false);
+        flashObject.transform.SetAsLastSibling();
+        impactFlashImage = flashObject.GetComponent<Image>();
+        impactFlashImage.color = new Color(1f, 0.05f, 0.05f, 0f);
+        impactFlashImage.raycastTarget = false;
+
+        RectTransform rect = impactFlashImage.rectTransform;
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+    }
+
+    private void ConfigureRunObjective()
+    {
+        int difficultyBonus = Mathf.Max(0, selectedDifficulty) * 10;
+
+        switch (selectedGameMode)
+        {
+            case 1:
+                objectiveScoreTarget = 40 + difficultyBonus;
+                objectiveTimeTarget = 75f;
+                objectiveTitle = "Vuelo limpio";
+                break;
+            case 2:
+                objectiveScoreTarget = 35 + difficultyBonus;
+                objectiveTimeTarget = 45f;
+                objectiveTitle = "Ruta express";
+                break;
+            case 3:
+                objectiveScoreTarget = 30 + difficultyBonus;
+                objectiveTimeTarget = 60f;
+                objectiveTitle = "Escapa del perseguidor";
+                break;
+            default:
+                objectiveScoreTarget = 50 + difficultyBonus;
+                objectiveTimeTarget = 60f;
+                objectiveTitle = "Supera la ciudad";
+                break;
+        }
+    }
+
+    private void RefreshObjectiveHud()
+    {
+        if (objectiveText == null)
+        {
+            return;
+        }
+
+        string statusColor = objectiveCompleted ? "#6DFF9C" : "#AAB6FF";
+        string status = objectiveCompleted ? "COMPLETADO" : GetObjectiveProgressText();
+        objectiveText.text = "<size=16><color=#AEB8C8>OBJETIVO</color></size>\n" +
+                             "<color=" + statusColor + ">" + objectiveTitle + " - " + status + "</color>";
+    }
+
+    private string GetObjectiveProgressText()
+    {
+        int shownTime = Mathf.FloorToInt(Mathf.Min(elapsedTime, objectiveTimeTarget));
+        return currentScore + "/" + objectiveScoreTarget + " obstaculos  |  " + shownTime + "/" + Mathf.FloorToInt(objectiveTimeTarget) + "s";
+    }
+
+    private void EvaluateRunObjective()
+    {
+        if (objectiveCompleted)
+        {
+            return;
+        }
+
+        if (currentScore >= objectiveScoreTarget || elapsedTime >= objectiveTimeTarget)
+        {
+            objectiveCompleted = true;
+            RefreshObjectiveHud();
+            ShowObjectiveCompletedPopup();
+        }
+    }
+
+    private void ShowObjectiveCompletedPopup()
+    {
+        if (objectivePopupText == null)
+        {
+            return;
+        }
+
+        if (objectivePopupRoutine != null)
+        {
+            StopCoroutine(objectivePopupRoutine);
+        }
+
+        objectivePopupRoutine = StartCoroutine(ObjectivePopupRoutine());
+    }
+
+    private IEnumerator ObjectivePopupRoutine()
+    {
+        objectivePopupText.text = "OBJETIVO COMPLETADO";
+        RectTransform rect = objectivePopupText.rectTransform;
+        Vector2 startPosition = new Vector2(0f, 110f);
+        Vector2 endPosition = new Vector2(0f, 145f);
+        float duration = 1.4f;
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float progress = Mathf.Clamp01(elapsed / duration);
+            rect.anchoredPosition = Vector2.Lerp(startPosition, endPosition, progress);
+            Color color = objectivePopupText.color;
+            color.a = progress < 0.7f ? 1f : Mathf.Lerp(1f, 0f, (progress - 0.7f) / 0.3f);
+            objectivePopupText.color = color;
+            objectivePopupText.transform.localScale = Vector3.one * (1f + Mathf.Sin(progress * Mathf.PI) * 0.08f);
+            yield return null;
+        }
+
+        objectivePopupText.text = "";
+        objectivePopupText.transform.localScale = Vector3.one;
+        rect.anchoredPosition = startPosition;
+        Color finalColor = objectivePopupText.color;
+        finalColor.a = 0f;
+        objectivePopupText.color = finalColor;
+        objectivePopupRoutine = null;
+    }
+
+    private IEnumerator ImpactFlashRoutine()
+    {
+        if (impactFlashImage == null)
+        {
+            yield break;
+        }
+
+        float duration = 0.28f;
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float progress = Mathf.Clamp01(elapsed / duration);
+            Color color = impactFlashImage.color;
+            color.a = Mathf.Lerp(0.32f, 0f, Mathf.SmoothStep(0f, 1f, progress));
+            impactFlashImage.color = color;
+            yield return null;
+        }
+
+        Color clear = impactFlashImage.color;
+        clear.a = 0f;
+        impactFlashImage.color = clear;
+        impactFlashRoutine = null;
+    }
+
+    private void CreateImpactParticles(Vector3 worldPosition)
+    {
+        GameObject particlesObject = new GameObject("DroneImpactParticles");
+        particlesObject.transform.position = worldPosition;
+
+        ParticleSystem particles = particlesObject.AddComponent<ParticleSystem>();
+        particles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        ParticleSystem.MainModule main = particles.main;
+        main.playOnAwake = false;
+        main.duration = 0.45f;
+        main.loop = false;
+        main.startLifetime = new ParticleSystem.MinMaxCurve(0.18f, 0.42f);
+        main.startSpeed = new ParticleSystem.MinMaxCurve(4f, 9f);
+        main.startSize = new ParticleSystem.MinMaxCurve(0.06f, 0.18f);
+        main.startColor = new ParticleSystem.MinMaxGradient(new Color(1f, 0.35f, 0.15f, 1f), new Color(0.45f, 0.9f, 1f, 1f));
+        main.simulationSpace = ParticleSystemSimulationSpace.World;
+
+        ParticleSystem.EmissionModule emission = particles.emission;
+        emission.rateOverTime = 0f;
+        emission.SetBursts(new[] { new ParticleSystem.Burst(0f, 42) });
+
+        ParticleSystem.ShapeModule shape = particles.shape;
+        shape.shapeType = ParticleSystemShapeType.Sphere;
+        shape.radius = 0.35f;
+
+        ParticleSystem.VelocityOverLifetimeModule velocity = particles.velocityOverLifetime;
+        velocity.enabled = true;
+        velocity.space = ParticleSystemSimulationSpace.Local;
+        velocity.x = new ParticleSystem.MinMaxCurve(-2.5f, 2.5f);
+        velocity.y = new ParticleSystem.MinMaxCurve(-1.5f, 2.5f);
+        velocity.z = new ParticleSystem.MinMaxCurve(-2.5f, 1.5f);
+
+        ParticleSystem.ColorOverLifetimeModule color = particles.colorOverLifetime;
+        color.enabled = true;
+        Gradient gradient = new Gradient();
+        gradient.SetKeys(
+            new[]
+            {
+                new GradientColorKey(new Color(1f, 0.38f, 0.14f), 0f),
+                new GradientColorKey(new Color(0.48f, 0.9f, 1f), 1f)
+            },
+            new[]
+            {
+                new GradientAlphaKey(1f, 0f),
+                new GradientAlphaKey(0f, 1f)
+            });
+        color.color = gradient;
+
+        particles.Play();
+        Destroy(particlesObject, 1.2f);
+    }
+
+    private void ConfigureFeedbackAudio()
+    {
+        if (feedbackAudioSource == null)
+        {
+            feedbackAudioSource = GetComponent<AudioSource>();
+            if (feedbackAudioSource == null)
+            {
+                feedbackAudioSource = gameObject.AddComponent<AudioSource>();
+            }
+        }
+
+        feedbackAudioSource.playOnAwake = false;
+        feedbackAudioSource.loop = false;
+        feedbackAudioSource.spatialBlend = 0f;
+        feedbackAudioSource.volume = 1f;
+
+        scoreBlipClip = CreateToneClip("ScoreBlip", 860f, 0.055f, 0.22f);
+        recordBlipClip = CreateToneClip("RecordBlip", 1180f, 0.12f, 0.26f);
+    }
+
+    private void AutoAssignFeedbackClips()
+    {
+#if UNITY_EDITOR
+        if (gameStartClip == null)
+        {
+            gameStartClip = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/foxboytails-game-start-317318.mp3");
+        }
+
+        if (gameOverClip == null)
+        {
+            gameOverClip = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/alphix-game-over-417465.mp3");
+        }
+#endif
+    }
+
+    private void PlayGameStartSound()
+    {
+        if (feedbackAudioSource != null && gameStartClip != null)
+        {
+            feedbackAudioSource.PlayOneShot(gameStartClip, gameStartVolume);
+        }
+    }
+
+    private void PlayGameOverSound()
+    {
+        if (feedbackAudioSource != null && gameOverClip != null)
+        {
+            feedbackAudioSource.PlayOneShot(gameOverClip, gameOverVolume);
+        }
+    }
+
+    private AudioClip CreateToneClip(string clipName, float frequency, float duration, float volume)
+    {
+        const int sampleRate = 44100;
+        int sampleCount = Mathf.CeilToInt(sampleRate * duration);
+        float[] samples = new float[sampleCount];
+
+        for (int i = 0; i < sampleCount; i++)
+        {
+            float time = i / (float)sampleRate;
+            float progress = i / (float)(sampleCount - 1);
+            float envelope = Mathf.Sin(progress * Mathf.PI);
+            samples[i] = Mathf.Sin(2f * Mathf.PI * frequency * time) * envelope * volume;
+        }
+
+        AudioClip clip = AudioClip.Create(clipName, sampleCount, 1, sampleRate, false);
+        clip.SetData(samples, 0);
+        return clip;
+    }
+
+    private void PlayScoreFeedback(int amount, bool isNewRecord)
+    {
+        if (scorePulseRoutine != null)
+        {
+            StopCoroutine(scorePulseRoutine);
+        }
+
+        scorePulseRoutine = StartCoroutine(ScorePulseRoutine(isNewRecord));
+
+        if (scorePopupText != null)
+        {
+            if (scorePopupRoutine != null)
+            {
+                StopCoroutine(scorePopupRoutine);
+            }
+
+            scorePopupRoutine = StartCoroutine(ScorePopupRoutine(amount, isNewRecord));
+        }
+
+        if (feedbackAudioSource != null)
+        {
+            AudioClip clip = isNewRecord ? recordBlipClip : scoreBlipClip;
+            if (clip != null)
+            {
+                feedbackAudioSource.PlayOneShot(clip);
+            }
+        }
+    }
+
+    private IEnumerator ScorePulseRoutine(bool isNewRecord)
+    {
+        if (scoreText == null)
+        {
+            yield break;
+        }
+
+        float elapsed = 0f;
+        while (elapsed < scorePopDuration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float progress = Mathf.Clamp01(elapsed / scorePopDuration);
+            float scale = Mathf.Lerp(scorePopScale, 1f, progress);
+            scoreText.transform.localScale = scoreTextBaseScale * scale;
+            yield return null;
+        }
+
+        scoreText.transform.localScale = scoreTextBaseScale;
+
+        if (isNewRecord && bestScoreText != null)
+        {
+            float recordElapsed = 0f;
+            while (recordElapsed < 0.24f)
+            {
+                recordElapsed += Time.unscaledDeltaTime;
+                float progress = Mathf.Clamp01(recordElapsed / 0.24f);
+                float scale = 1f + Mathf.Sin(progress * Mathf.PI) * 0.18f;
+                bestScoreText.transform.localScale = bestScoreTextBaseScale * scale;
+                yield return null;
+            }
+
+            bestScoreText.transform.localScale = bestScoreTextBaseScale;
+        }
+
+        scorePulseRoutine = null;
+    }
+
+    private IEnumerator ScorePopupRoutine(int amount, bool isNewRecord)
+    {
+        scorePopupText.text = "+" + amount;
+        scorePopupText.color = isNewRecord ? new Color(1f, 0.88f, 0.28f, 1f) : new Color(0.45f, 1f, 0.68f, 1f);
+
+        if (recordPopupText != null && isNewRecord)
+        {
+            recordPopupText.text = "NUEVO RECORD";
+        }
+
+        RectTransform rect = scorePopupText.rectTransform;
+        Vector2 startPosition = new Vector2(154f, -38f);
+        Vector2 endPosition = startPosition + new Vector2(0f, 28f);
+        float duration = isNewRecord ? 0.72f : 0.45f;
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float progress = Mathf.Clamp01(elapsed / duration);
+            float fadeProgress = Mathf.SmoothStep(0f, 1f, progress);
+            rect.anchoredPosition = Vector2.Lerp(startPosition, endPosition, progress);
+            Color color = scorePopupText.color;
+            color.a = Mathf.Lerp(1f, 0f, fadeProgress);
+            scorePopupText.color = color;
+
+            if (recordPopupText != null && isNewRecord)
+            {
+                Color recordColor = recordPopupText.color;
+                recordColor.a = progress < 0.72f ? 1f : Mathf.Lerp(1f, 0f, (progress - 0.72f) / 0.28f);
+                recordPopupText.color = recordColor;
+                float scale = 1f + Mathf.Sin(progress * Mathf.PI) * 0.08f;
+                recordPopupText.transform.localScale = Vector3.one * scale;
+            }
+
+            yield return null;
+        }
+
+        scorePopupText.text = "";
+        rect.anchoredPosition = startPosition;
+
+        if (recordPopupText != null)
+        {
+            recordPopupText.text = "";
+            recordPopupText.transform.localScale = Vector3.one;
+            Color recordColor = recordPopupText.color;
+            recordColor.a = 0f;
+            recordPopupText.color = recordColor;
+        }
+
+        scorePopupRoutine = null;
+    }
+
     private void RegisterButtonCallbacks()
     {
         if (restartButton != null)
@@ -401,6 +998,12 @@ public class GameController : MonoBehaviour
         {
             resumeButton.onClick.RemoveListener(ResumeGameFromButton);
             resumeButton.onClick.AddListener(ResumeGameFromButton);
+        }
+
+        if (mainMenuButton != null)
+        {
+            mainMenuButton.onClick.RemoveListener(ReturnToMainMenu);
+            mainMenuButton.onClick.AddListener(ReturnToMainMenu);
         }
     }
 
@@ -446,6 +1049,7 @@ public class GameController : MonoBehaviour
         }
 
         CreateOrUpdateGameOverCard();
+        EnsureMainMenuButton();
         ConfigureMenuText();
         ConfigureMenuButtons();
     }
@@ -521,7 +1125,7 @@ public class GameController : MonoBehaviour
             containerRect.anchorMax = new Vector2(0.5f, 0.5f);
             containerRect.pivot = new Vector2(0.5f, 0.5f);
             containerRect.anchoredPosition = new Vector2(0f, -150f);
-            containerRect.sizeDelta = new Vector2(520f, 58f);
+            containerRect.sizeDelta = new Vector2(620f, 58f);
 
             HorizontalLayoutGroup layout = containerRect.GetComponent<HorizontalLayoutGroup>();
             if (layout != null)
@@ -538,7 +1142,53 @@ public class GameController : MonoBehaviour
 
         StyleMenuButton(resumeButton, "Reanudar", new Color(0.34f, 0.75f, 1f, 1f));
         StyleMenuButton(restartButton, "Reintentar", new Color(0.38f, 0.84f, 0.58f, 1f));
+        StyleMenuButton(mainMenuButton, "Menu", new Color(0.55f, 0.65f, 0.82f, 1f));
         StyleMenuButton(exitButton, "Salir", new Color(0.95f, 0.4f, 0.45f, 1f));
+    }
+
+    private void EnsureMainMenuButton()
+    {
+        if (mainMenuButton != null)
+        {
+            return;
+        }
+
+        Transform buttonParent = restartButton != null ? restartButton.transform.parent : gameOverMenu.transform;
+        Transform existing = buttonParent.Find("MainMenuButton");
+        if (existing != null)
+        {
+            mainMenuButton = existing.GetComponent<Button>();
+            if (mainMenuButton != null)
+            {
+                return;
+            }
+        }
+
+        GameObject buttonObject = new GameObject("MainMenuButton", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button), typeof(LayoutElement));
+        buttonObject.transform.SetParent(buttonParent, false);
+        mainMenuButton = buttonObject.GetComponent<Button>();
+
+        GameObject labelObject = new GameObject("Text", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+        labelObject.transform.SetParent(buttonObject.transform, false);
+        TextMeshProUGUI label = labelObject.GetComponent<TextMeshProUGUI>();
+        label.text = "Menu";
+        label.alignment = TextAlignmentOptions.Center;
+        label.fontSize = 22f;
+        label.fontStyle = FontStyles.Bold;
+        label.color = Color.white;
+
+        RectTransform labelRect = label.rectTransform;
+        labelRect.anchorMin = Vector2.zero;
+        labelRect.anchorMax = Vector2.one;
+        labelRect.offsetMin = Vector2.zero;
+        labelRect.offsetMax = Vector2.zero;
+
+        if (restartButton != null)
+        {
+            buttonObject.transform.SetSiblingIndex(restartButton.transform.GetSiblingIndex() + 1);
+        }
+
+        mainMenuButton.onClick.AddListener(ReturnToMainMenu);
     }
 
     private void StyleMenuButton(Button button, string label, Color color)
@@ -570,7 +1220,7 @@ public class GameController : MonoBehaviour
         }
 
         layoutElement.minWidth = 150f;
-        layoutElement.preferredWidth = 170f;
+        layoutElement.preferredWidth = 150f;
         layoutElement.minHeight = 52f;
         layoutElement.preferredHeight = 52f;
 
@@ -598,6 +1248,9 @@ public class GameController : MonoBehaviour
 
         if (resumeButton != null)
             resumeButton.gameObject.SetActive(false);
+
+        if (mainMenuButton != null)
+            mainMenuButton.gameObject.SetActive(false);
 
         if (gameOverCanvasGroup != null)
         {
@@ -659,6 +1312,7 @@ public class GameController : MonoBehaviour
 
         elapsedTime = 0f;
         currentScore = 0;
+        reachedNewRecord = false;
         isGameOver = false;
         isPaused = false;
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);

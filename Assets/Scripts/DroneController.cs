@@ -157,6 +157,7 @@ public class DroneController : MonoBehaviour
         movementSoundController?.StopMovementSounds();
         spaceSoundController?.StopSpaceSound();
         cameraFollow?.PlayCrashFeedback();
+        gameController?.PlayImpactFeedback(transform.position);
 
         if (crashFlashRoutine != null)
         {
